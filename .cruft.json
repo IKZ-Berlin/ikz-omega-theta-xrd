@@ -1,0 +1,26 @@
+{
+  "template": "https://github.com/FAIRmat-NFDI/cookiecutter-nomad-plugin",
+  "commit": "c40010ce548126347c5fd7b36c2a5031bcd0b34b",
+  "checkout": null,
+  "context": {
+    "cookiecutter": {
+      "full_name": "Sebastian Brueckner",
+      "email": "sebastian.brueckner@physik.hu-berlin.de",
+      "github_username": "budschi",
+      "plugin_name": "ikz_omega_theta_xrd",
+      "module_name": "ikz_omega_theta_xrd",
+      "short_description": "NOMAD plugin for Omega Theta XRD Measurements",
+      "version": "0.1.0",
+      "license": "MIT",
+      "include_schema_package": true,
+      "include_normalizer": false,
+      "include_parser": true,
+      "include_app": true,
+      "_copy_without_render": [
+        "*.html"
+      ],
+      "_template": "https://github.com/FAIRmat-NFDI/cookiecutter-nomad-plugin"
+    }
+  },
+  "directory": null
+}
