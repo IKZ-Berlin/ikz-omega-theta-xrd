@@ -74,7 +74,7 @@ select = [
     "UP",
     # isort
     "I",
-    # pylint 
+    # pylint
     "PL",
 ]
 
@@ -108,10 +108,11 @@ package-dir = { "" = "src" }
 where = ["src"]
 
 [project.entry-points.'nomad.plugin']
-myparser = "nomad_ikz_omega_theta_xrd.parsers:myparser"
-mypackage = "nomad_ikz_omega_theta_xrd.schema_packages:mypackage"
+# myparser = "nomad_ikz_omega_theta_xrd.parsers:myparser"
+# mypackage = "nomad_ikz_omega_theta_xrd.schema_packages:mypackage"
+omegascan = "nomad_ikz_omega_theta_xrd.schema_packages:omegascan"
 
-myapp = "nomad_ikz_omega_theta_xrd.apps:myapp"
+# myapp = "nomad_ikz_omega_theta_xrd.apps:myapp"
 [tool.cruft]
 # Avoid updating workflow files, this leads to permissions issues
 skip = [".github/*"]
