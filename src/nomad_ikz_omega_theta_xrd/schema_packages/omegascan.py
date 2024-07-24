@@ -19,15 +19,19 @@
 from datetime import datetime
 from typing import TYPE_CHECKING
 
+import matplotlib.pyplot as plt
 import numpy as np
 import plotly.graph_objects as go
 from nomad.datamodel.data import ArchiveSection, EntryData
 from nomad.datamodel.metainfo.basesections import Measurement, MeasurementResult
 from nomad.datamodel.metainfo.plot import PlotlyFigure, PlotSection
-from nomad.metainfo import Datetime, Package, Quantity, Section, SubSection
+from nomad.metainfo import Datetime, MEnum, Package, Quantity, Section, SubSection
 
 from nomad_ikz_omega_theta_xrd.schema_packages.omegathetaxrdreader import (
     extract_data_and_metadata,
+    extract_general_info,
+    extract_parameter_list,
+    extract_scan_data,
 )
 
 if TYPE_CHECKING:
@@ -88,47 +92,47 @@ class ParameterList(MeasurementResult, PlotSection, ArchiveSection):
         description='Name of the scan generated from the X-Y position',
         a_eln={'component': 'StringEditQuantity'},
     )
-    XPos = Quantity(
+    x_pos = Quantity(
         type=int,
         description='XPos',
         a_eln={'component': 'NumberEditQuantity'},
     )
-    YPos = Quantity(
+    y_pos = Quantity(
         type=int,
         description='YPos',
         a_eln={'component': 'NumberEditQuantity'},
     )
-    Tilt = Quantity(
+    tilt = Quantity(
         type=np.float64,
         description='Tilt',
         a_eln={'component': 'NumberEditQuantity'},
         unit='\u00b0',
     )
-    Tilt_direction = Quantity(
+    tilt_direction = Quantity(
         type=np.float64,
         description='Tilt direction',
         a_eln={'component': 'NumberEditQuantity'},
         unit='\u00b0',
     )
-    Component_0 = Quantity(
+    component_0 = Quantity(
         type=np.float64,
         description='Component 0',
         a_eln={'component': 'NumberEditQuantity'},
         unit='\u00b0',
     )
-    Component_90 = Quantity(
+    component_90 = Quantity(
         type=np.float64,
         description='Component 90',
         a_eln={'component': 'NumberEditQuantity'},
         unit='\u00b0',
     )
-    Reference_offset = Quantity(
+    reference_offset = Quantity(
         type=np.float64,
         description='Reference offset',
         a_eln={'component': 'NumberEditQuantity'},
         unit='\u00b0',
     )
-    Reference_axis = Quantity(
+    reference_axis = Quantity(
         type=str,
         description='Reference axis',
         a_eln={'component': 'StringEditQuantity'},
@@ -138,46 +142,60 @@ class ParameterList(MeasurementResult, PlotSection, ArchiveSection):
         repeats=True,
     )
 
-    def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
-        """
-        The normalizer for the `ParameterList` class.
+    # def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
+    #     """
+    #     The normalizer for the `ParameterList` class.
 
-        Args:
-            archive (EntryArchive): The archive containing the section that is being
-            normalized.
-            logger (BoundLogger): A structlog logger.
-        """
-        super().normalize(archive, logger)
-        fig = go.Figure()
-        fig.add_trace(
-            go.Scatter(
-                x=self.Scan_Curves[0].omega,
-                y=self.Scan_Curves[0].intensity,
-                mode='lines',
-                name='Omega R',
-            )
-        )
-        fig.add_trace(
-            go.Scatter(
-                x=self.Scan_Curves[1].omega,
-                y=self.Scan_Curves[1].intensity,
-                mode='lines',
-                name='Omega L',
-            )
-        )
+    #     Args:
+    #         archive (EntryArchive): The archive containing the section that is being
+    #         normalized.
+    #         logger (BoundLogger): A structlog logger.
+    #     """
+    #     super().normalize(archive, logger)
+    #     fig = go.Figure()
+    #     fig.add_trace(
+    #         go.Scatter(
+    #             x=self.Scan_Curves[0].omega,
+    #             y=self.Scan_Curves[0].intensity,
+    #             mode='lines',
+    #             name='Omega R',
+    #         )
+    #     )
+    #     fig.add_trace(
+    #         go.Scatter(
+    #             x=self.Scan_Curves[1].omega,
+    #             y=self.Scan_Curves[1].intensity,
+    #             mode='lines',
+    #             name='Omega L',
+    #         )
+    #     )
 
-        fig.update_layout(
-            height=400,
-            width=716,
-            title_text='Omega Theta XRD',
-            showlegend=True,
-            legend=dict(yanchor='top', y=0.99, xanchor='left', x=0.01),
-        )
-        # self.figures = []
-        self.figures.append(PlotlyFigure(label='figure 2', figure=fig.to_plotly_json()))
+    #     fig.update_layout(
+    #         height=400,
+    #         width=716,
+    #         title_text='Omega Theta XRD',
+    #         showlegend=True,
+    #         legend=dict(yanchor='top', y=0.99, xanchor='left', x=0.01),
+    #     )
+    #     # self.figures = []
+    #     self.figures.append(PlotlyFigure(label='figure 2', figure=fig.to_plotly_json()))
 
 
-class OmegaThetaXRD(Measurement, EntryData, ArchiveSection):
+class SampleSpecifications(ArchiveSection):
+    m_def = Section()
+    sample_preparation_status = Quantity(
+        type=str,
+        description='Status of the sample preparation',
+        a_eln={'component': 'StringEditQuantity'},
+    )
+    sample_side_facing_down = Quantity(
+        type=MEnum(['Al unten', 'N unten']),
+        description='sample surface facing downwards',
+        a_eln={'component': 'EnumEditQuantity'},
+    )
+
+
+class OmegaThetaXRD(Measurement, PlotSection, EntryData, ArchiveSection):
     """
     Class autogenerated from yaml schema.
     """
@@ -197,9 +215,17 @@ class OmegaThetaXRD(Measurement, EntryData, ArchiveSection):
         type=Datetime,
         a_eln={'component': 'DateTimeEditQuantity'},
     )
+    measurement_type = Quantity(
+        type=MEnum(['single measurement', 'mapping']),
+        description='Type of the measurement',
+        a_eln={'component': 'EnumEditQuantity'},
+    )
     results = SubSection(
         section_def=ParameterList,
         repeats=True,
+    )
+    sample_specifications = SubSection(
+        section_def=SampleSpecifications,
     )
 
     def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
@@ -212,8 +238,9 @@ class OmegaThetaXRD(Measurement, EntryData, ArchiveSection):
             logger (BoundLogger): A structlog logger.
         """
         super().normalize(archive, logger)
+
         if self.data_file is not None:
-            read_function = extract_data_and_metadata
+            # read_function = extract_data_and_metadata
             # write_function = self.get_write_functions()
             # if read_function is None or write_function is None:
             #     logger.warn(
@@ -221,148 +248,257 @@ class OmegaThetaXRD(Measurement, EntryData, ArchiveSection):
             #     )
             # else:
             with archive.m_context.raw_file(self.data_file) as file:
-                xrd_dict = read_function(file.name)
+                xrd_dict = extract_data_and_metadata(file.name)
                 #    raman_dict = read_function(file.name)  # , logger)
                 # write_function(raman_dict, archive, logger)
-                self.name = xrd_dict.get('metadata').get('Info').get('Name')
-                self.time_stamp = datetime.strptime(
-                    xrd_dict.get('metadata').get('Info').get('TimeStamp'),
-                    '%m/%d/%Y %H:%M:%S',
-                )
-                self.scan_recipe_name = (
-                    xrd_dict.get('metadata').get('Info').get('RecipeName')
-                )
-                results = ParameterList()
-                results.name = (
-                    xrd_dict.get('metadata').get('Info').get('XPos')
-                    + '-'
-                    + xrd_dict.get('metadata').get('Info').get('YPos')
-                )
-                results.XPos = int(
-                    xrd_dict.get('metadata')
-                    .get('Result')
-                    .get('ParameterList')
-                    .get('Parameter')[3]
-                    .get('Value')
-                )
-                results.YPos = int(
-                    xrd_dict.get('metadata')
-                    .get('Result')
-                    .get('ParameterList')
-                    .get('Parameter')[4]
-                    .get('Value')
-                )
-                results.Tilt = float(
-                    xrd_dict.get('metadata')
-                    .get('Result')
-                    .get('ParameterList')
-                    .get('Parameter')[8]
-                    .get('Value')
-                )
-                results.Tilt_direction = float(
-                    xrd_dict.get('metadata')
-                    .get('Result')
-                    .get('ParameterList')
-                    .get('Parameter')[9]
-                    .get('Value')
-                )
-                results.Component_0 = float(
-                    xrd_dict.get('metadata')
-                    .get('Result')
-                    .get('ParameterList')
-                    .get('Parameter')[12]
-                    .get('Value')
-                )
-                results.Component_90 = float(
-                    xrd_dict.get('metadata')
-                    .get('Result')
-                    .get('ParameterList')
-                    .get('Parameter')[13]
-                    .get('Value')
-                )
-                results.Reference_offset = float(
-                    xrd_dict.get('metadata')
-                    .get('Result')
-                    .get('ParameterList')
-                    .get('Parameter')[14]
-                    .get('Value')
-                )
-                results.Reference_axis = (
-                    xrd_dict.get('metadata')
-                    .get('Result')
-                    .get('ParameterList')
-                    .get('Parameter')[15]
-                    .get('Value')
-                )
+                if (
+                    extract_general_info(xrd_dict.get('Measurement', {}))['name']
+                    != None
+                ):
+                    info_dict = extract_general_info(xrd_dict.get('Measurement', {}))
+                    paramter_dict = extract_parameter_list(
+                        xrd_dict.get('Measurement', {})
+                    )
+                    scan_dict = extract_scan_data(xrd_dict.get('Measurement', {}))
 
-                scan_r = ScanCurve()
-                scan_r.name = (
-                    xrd_dict.get('scans')
-                    .get('Scan')
-                    .get('ScanCurves')
-                    .get('ScanCurve')[0]
-                    .get('Name')
-                )
+                    self.name = info_dict.get('name')
+                    self.time_stamp = datetime.strptime(
+                        info_dict.get('time_stamp'), '%m/%d/%Y %H:%M:%S'
+                    )
+                    self.scan_recipe_name = info_dict.get('scan_recipe_name')
+                    self.measurement_type = 'single measurement'
+                    results = ParameterList()
+                    results.name = info_dict.get('name')
+                    results.x_pos = int(paramter_dict.get('xpos'))
+                    results.y_pos = int(paramter_dict.get('ypos'))
+                    results.tilt = float(paramter_dict.get('tilt'))
+                    results.tilt_direction = float(paramter_dict.get('tilt_direction'))
+                    results.component_0 = float(paramter_dict.get('component_0'))
+                    results.component_90 = float(paramter_dict.get('component_90'))
+                    results.reference_offset = float(
+                        paramter_dict.get('reference_offset')
+                    )
+                    results.reference_axis = paramter_dict.get('reference_axis')
+                    scan_r = ScanCurve()
+                    scan_r.name = scan_dict.get('scan_r').get('name')
+                    scan_r.omega = scan_dict.get('scan_r').get('omega')
+                    scan_r.intensity = scan_dict.get('scan_r').get('intensity')
+                    scan_l = ScanCurve()
+                    scan_l.name = scan_dict.get('scan_l').get('name')
+                    scan_l.omega = scan_dict.get('scan_l').get('omega')
+                    scan_l.intensity = scan_dict.get('scan_l').get('intensity')
+                    results.Scan_Curves = [scan_r, scan_l]
+                    # results.normalize(archive, logger)
+                    self.results = [results]
 
-                input_str = (
-                    xrd_dict.get('scans')
-                    .get('Scan')
-                    .get('ScanCurves')
-                    .get('ScanCurve')[0]
-                    .get('text')
-                )
-                scanarray_omega = []
-                scanarray_intensity = []
-                [
-                    scanarray_omega.append(float(i.split(' ')[0]))
-                    for i in input_str.split(';')
-                    if i
-                ]
-                [
-                    scanarray_intensity.append(float(i.split(' ')[1]))
-                    for i in input_str.split(';')
-                    if i
-                ]
-                # scan_r = ScanCurve()
-                scan_r.omega = scanarray_omega
-                scan_r.intensity = scanarray_intensity
+                    fig = go.Figure()
+                    fig.add_trace(
+                        go.Scatter(
+                            x=self.results[0].Scan_Curves[0].omega,
+                            y=self.results[0].Scan_Curves[0].intensity,
+                            mode='lines',
+                            name='Omega R',
+                        )
+                    )
+                    fig.add_trace(
+                        go.Scatter(
+                            x=self.results[0].Scan_Curves[1].omega,
+                            y=self.results[0].Scan_Curves[1].intensity,
+                            mode='lines',
+                            name='Omega L',
+                        )
+                    )
 
-                scan_l = ScanCurve()
-                scan_l.name = (
-                    xrd_dict.get('scans')
-                    .get('Scan')
-                    .get('ScanCurves')
-                    .get('ScanCurve')[1]
-                    .get('Name')
-                )
+                    fig.update_layout(
+                        height=400,
+                        width=716,
+                        title_text='Omega Theta XRD',
+                        showlegend=True,
+                        legend=dict(yanchor='top', y=0.99, xanchor='left', x=0.01),
+                    )
+                    self.results[0].figures = []
+                    self.results[0].figures.append(
+                        PlotlyFigure(label='Omega Scans', figure=fig.to_plotly_json())
+                    )
 
-                input_str = (
-                    xrd_dict.get('scans')
-                    .get('Scan')
-                    .get('ScanCurves')
-                    .get('ScanCurve')[1]
-                    .get('text')
-                )
-                scanarray_omega = []
-                scanarray_intensity = []
-                [
-                    scanarray_omega.append(float(i.split(' ')[0]))
-                    for i in input_str.split(';')
-                    if i
-                ]
-                [
-                    scanarray_intensity.append(float(i.split(' ')[1]))
-                    for i in input_str.split(';')
-                    if i
-                ]
-                # scan_r = ScanCurve()
-                scan_l.omega = scanarray_omega
-                scan_l.intensity = scanarray_intensity
-                # [scan_r.omega.append(i.split(' ')[0]) for i in input_str.split(';')]
+                elif (
+                    extract_general_info(xrd_dict.get('MultiMeasurement', {}))['name']
+                    != None
+                ):
+                    info_dict = extract_general_info(
+                        xrd_dict.get('MultiMeasurement', {})
+                    )
 
-                results.Scan_Curves = [scan_r, scan_l]
-                results.normalize(archive, logger)
-                self.results = [results]
+                    self.name = info_dict.get('name')
+                    self.time_stamp = datetime.strptime(
+                        info_dict.get('time_stamp'), '%m/%d/%Y %H:%M:%S'
+                    )
+                    self.scan_recipe_name = info_dict.get('scan_recipe_name')
+                    self.measurement_type = 'mapping'
+                    for measurement in (
+                        xrd_dict.get('MultiMeasurement', {})
+                        .get('Measurements', {})
+                        .get('Measurement')
+                    ):
+                        info_dict = extract_general_info(measurement)
+                        paramter_dict = extract_parameter_list(measurement)
+                        # scan_dict = extract_scan_data(measurement)
+                        results = ParameterList()
+                        results.name = info_dict.get('name')
+                        results.x_pos = int(paramter_dict.get('xpos'))
+                        results.y_pos = int(paramter_dict.get('ypos'))
+                        results.tilt = float(paramter_dict.get('tilt'))
+                        results.tilt_direction = float(
+                            paramter_dict.get('tilt_direction')
+                        )
+                        results.component_0 = float(paramter_dict.get('component_0'))
+                        results.component_90 = float(paramter_dict.get('component_90'))
+                        results.reference_offset = float(
+                            paramter_dict.get('reference_offset')
+                        )
+                        results.reference_axis = paramter_dict.get('reference_axis')
+                        # # scan_r = ScanCurve()
+                        # # scan_r.name = scan_dict.get('scan_r').get('name')
+                        # # scan_r.omega = scan_dict.get('scan_r').get('omega')
+                        # # scan_r.intensity = scan_dict.get('scan_r').get('intensity')
+                        # # scan_l = ScanCurve()
+                        # # scan_l.name = scan_dict.get('scan_l').get('name')
+                        # # scan_l.omega = scan_dict.get('scan_l').get('omega')
+                        # # scan_l.intensity = scan_dict.get('scan_l').get('intensity')
+                        # # results.Scan_Curves = [scan_r, scan_l]
+                        # results.normalize(archive, logger)
+                        self.results.append(results)
+
+                    if self.results != None:
+                        # Extracting data for the plots
+                        x_coords = [int(point['x_pos']) for point in self.results]
+                        y_coords = [int(point['y_pos']) for point in self.results]
+                        tilt_values = [
+                            float(point['tilt'].magnitude) for point in self.results
+                        ]
+                        tilt_direction_values = [
+                            float(point['tilt_direction'].magnitude)
+                            for point in self.results
+                        ]
+                        component_0_values = [
+                            float(point['component_0'].magnitude)
+                            for point in self.results
+                        ]
+                        component_90_values = [
+                            float(point['component_90'].magnitude)
+                            for point in self.results
+                        ]
+                        reference_offset_values = [
+                            float(point['reference_offset'].magnitude)
+                            for point in self.results
+                        ]
+                        # Function to normalize values and map to colors
+
+                        def get_colors(values):
+                            norm = plt.Normalize(min(values), max(values))
+                            cmap = plt.cm.viridis
+                            return [cmap(norm(value)) for value in values]
+
+                        # Function to convert RGBA to hex
+                        def rgba_to_hex(rgba):
+                            return f'#{int(rgba[0]*255):02x}{int(rgba[1]*255):02x}{int(rgba[2]*255):02x}'
+
+                        # Function to create a scatter plot with text annotations and color gradient boxes
+                        def create_plot(x_coords, y_coords, values, title):
+                            colors = get_colors(values)
+                            hex_colors = [rgba_to_hex(color) for color in colors]
+
+                            fig = go.Figure()
+                            for x, y, value, color in zip(
+                                x_coords, y_coords, values, hex_colors
+                            ):
+                                fig.add_trace(
+                                    go.Scatter(
+                                        x=[x],
+                                        y=[y],
+                                        mode='text',
+                                        text=[f'{float(value):.3f}'],
+                                        textposition='middle center',
+                                        showlegend=False,
+                                    )
+                                )
+                                # Adding box around the text with color gradient
+                                fig.add_shape(
+                                    type='rect',
+                                    x0=x - 1.5,
+                                    y0=y - 1.5,
+                                    x1=x + 1.5,
+                                    y1=y + 1.5,
+                                    line=dict(color=color, width=2),
+                                    fillcolor=color,
+                                    opacity=0.5,
+                                )
+                            fig.update_layout(
+                                title=title,
+                                xaxis_title='X Position',
+                                yaxis_title='Y Position',
+                                plot_bgcolor='white',
+                                xaxis=dict(showgrid=True, zeroline=False),
+                                yaxis=dict(showgrid=True, zeroline=False),
+                            )
+                            return fig
+
+                        # Creating plots for each parameter
+                        fig_tilt = create_plot(x_coords, y_coords, tilt_values, 'Tilt')
+                        fig_tilt_direction = create_plot(
+                            x_coords, y_coords, tilt_direction_values, 'Tilt Direction'
+                        )
+                        fig_component_0 = create_plot(
+                            x_coords, y_coords, component_0_values, 'Component 0'
+                        )
+                        fig_component_90 = create_plot(
+                            x_coords, y_coords, component_90_values, 'Component 90'
+                        )
+                        fig_reference_offset = create_plot(
+                            x_coords,
+                            y_coords,
+                            reference_offset_values,
+                            'Reference Offset',
+                        )
+                        # Displaying the plots
+                        # fig_tilt.show()
+                        # fig_tilt_direction.show()
+                        # fig_component_0.show()
+                        self.figures = []
+                        self.figures.append(
+                            PlotlyFigure(
+                                label='tilt', index=1, figure=fig_tilt.to_plotly_json()
+                            )
+                        )
+                        self.figures.append(
+                            PlotlyFigure(
+                                label='tilt direction',
+                                index=2,
+                                figure=fig_tilt_direction.to_plotly_json(),
+                            )
+                        )
+                        self.figures.append(
+                            PlotlyFigure(
+                                label='component 0',
+                                index=3,
+                                figure=fig_component_0.to_plotly_json(),
+                            )
+                        )
+                        self.figures.append(
+                            PlotlyFigure(
+                                label='component 90',
+                                index=4,
+                                figure=fig_component_90.to_plotly_json(),
+                            )
+                        )
+                        self.figures.append(
+                            PlotlyFigure(
+                                label='reference offset',
+                                index=5,
+                                figure=fig_reference_offset.to_plotly_json(),
+                            )
+                        )
+
         if not self.results:
             return
         # figure1 = px.line(
