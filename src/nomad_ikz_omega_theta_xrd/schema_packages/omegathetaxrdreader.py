@@ -34,6 +34,7 @@ def extract_general_info(
     """Extract general information from the XRD data."""
     general_info = {
         'name': xrd_dict.get('Info', {}).get('Name'),
+        'original_name': xrd_dict.get('Info', {}).get('OriginalName'),
         'time_stamp': xrd_dict.get('Info', {}).get('TimeStamp'),
         'user': xrd_dict.get('Info', {}).get('User'),
         'description': xrd_dict.get('Info', {}).get('Comment'),
