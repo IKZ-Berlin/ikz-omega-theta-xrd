@@ -430,6 +430,9 @@ class OmegaThetaXRD(Measurement, PlotSection, EntryData, ArchiveSection):
                     self.figures.append(
                         PlotlyFigure(label='Table', figure=fig_table.to_plotly_json())
                     )
+                    self.figures.append(
+                        PlotlyFigure(label='Omega Scans', figure=fig.to_plotly_json())
+                    )
 
                 elif (
                     extract_general_info(xrd_dict.get('MultiMeasurement', {}))['name']
