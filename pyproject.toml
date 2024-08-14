@@ -111,6 +111,7 @@ where = ["src"]
 # myparser = "nomad_ikz_omega_theta_xrd.parsers:myparser"
 # mypackage = "nomad_ikz_omega_theta_xrd.schema_packages:mypackage"
 omegascan = "nomad_ikz_omega_theta_xrd.schema_packages:omegascan"
+omegathetaxrdparser = "nomad_ikz_omega_theta_xrd.parsers:omegathetaxrdparser"
 
 # myapp = "nomad_ikz_omega_theta_xrd.apps:myapp"
 [tool.cruft]
