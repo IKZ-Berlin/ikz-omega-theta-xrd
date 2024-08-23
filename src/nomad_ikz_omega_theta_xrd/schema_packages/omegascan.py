@@ -136,12 +136,12 @@ class ParameterList(MeasurementResult, PlotSection, ArchiveSection):
         a_eln={'component': 'StringEditQuantity'},
     )
     x_pos = Quantity(
-        type=int,
+        type=np.float64,
         description='XPos',
         a_eln={'component': 'NumberEditQuantity'},
     )
     y_pos = Quantity(
-        type=int,
+        type=np.float64,
         description='YPos',
         a_eln={'component': 'NumberEditQuantity'},
     )
@@ -319,8 +319,8 @@ class OmegaThetaXRD(Measurement, PlotSection, EntryData, ArchiveSection):
                     self.measurement_type = 'single measurement'
                     results = ParameterList()
                     results.name = info_dict.get('name')
-                    results.x_pos = int(paramter_dict.get('xpos'))
-                    results.y_pos = int(paramter_dict.get('ypos'))
+                    results.x_pos = float(paramter_dict.get('xpos'))
+                    results.y_pos = float(paramter_dict.get('ypos'))
                     results.tilt = float(paramter_dict.get('tilt'))
                     results.tilt_direction = float(paramter_dict.get('tilt_direction'))
                     results.component_0 = float(paramter_dict.get('component_0'))
@@ -459,8 +459,8 @@ class OmegaThetaXRD(Measurement, PlotSection, EntryData, ArchiveSection):
                         # scan_dict = extract_scan_data(measurement)
                         results = ParameterList()
                         results.name = info_dict.get('name')
-                        results.x_pos = int(paramter_dict.get('xpos'))
-                        results.y_pos = int(paramter_dict.get('ypos'))
+                        results.x_pos = float(paramter_dict.get('xpos'))
+                        results.y_pos = float(paramter_dict.get('ypos'))
                         results.tilt = float(paramter_dict.get('tilt'))
                         results.tilt_direction = float(
                             paramter_dict.get('tilt_direction')
@@ -501,8 +501,8 @@ class OmegaThetaXRD(Measurement, PlotSection, EntryData, ArchiveSection):
 
                     if self.results != None:
                         # Extracting data for the plots
-                        x_coords = [int(point['x_pos']) for point in self.results]
-                        y_coords = [int(point['y_pos']) for point in self.results]
+                        x_coords = [float(point['x_pos']) for point in self.results]
+                        y_coords = [float(point['y_pos']) for point in self.results]
                         tilt_values = [
                             float(point['tilt'].magnitude) for point in self.results
                         ]
