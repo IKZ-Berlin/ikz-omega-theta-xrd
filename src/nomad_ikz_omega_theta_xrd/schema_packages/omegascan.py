@@ -185,6 +185,108 @@ class ParameterList(MeasurementResult, PlotSection, ArchiveSection):
         repeats=True,
     )
 
+    def generate_scan_plot(self):
+        fig = go.Figure()
+        fig.add_trace(
+            go.Scatter(
+                x=self.Scan_Curves[0].omega,
+                y=self.Scan_Curves[0].intensity,
+                mode='lines',
+                name='Omega R',
+            )
+        )
+        fig.add_trace(
+            go.Scatter(
+                x=self.Scan_Curves[1].omega,
+                y=self.Scan_Curves[1].intensity,
+                mode='lines',
+                name='Omega L',
+            )
+        )
+
+        fig.update_layout(
+            height=400,
+            width=716,
+            title_text='Omega Theta XRD',
+            showlegend=True,
+            legend=dict(yanchor='top', y=0.99, xanchor='left', x=0.01),
+            template='plotly_white',
+            hovermode='closest',
+            dragmode='zoom',
+            xaxis=dict(
+                fixedrange=False,
+                # autorange=True,
+                title='Omega (°)',
+            ),
+            yaxis=dict(
+                fixedrange=False,
+                title='Intensity (a.u.)',
+            ),
+        )
+        return PlotlyFigure(label='Omega Scans', figure=fig.to_plotly_json())
+
+    def generate_stereographic_plot(self):
+        # Werte für Tiltwinkel (Rho) und Azimut (Theta)
+        rho = self.tilt.magnitude
+        theta = self.tilt_direction.magnitude
+        ref_axis = self.reference_axis
+
+        # Stereographische Projektion mit Plotly erstellen
+        fig_stereo = go.Figure(
+            go.Scatterpolar(
+                r=[0, rho],
+                theta=[0, theta],
+                mode='lines+markers',
+                marker=dict(size=8),
+            )
+        )
+
+        # Layout anpassen, 0 Grad auf 9 Uhr setzen
+        fig_stereo.update_layout(
+            polar=dict(
+                angularaxis=dict(
+                    rotation=180,  # Rotieren, um 0° auf 9 Uhr zu setzen
+                    direction='clockwise',
+                ),
+                radialaxis=dict(
+                    range=[0, 0.5],  # Maximalen Radius anpassen
+                    visible=True,
+                ),
+            ),
+            showlegend=False,
+            title='Stereographic Projection of the Tilt Angle',
+            template='plotly_white',
+            hovermode='closest',
+            dragmode='zoom',
+        )
+        # Add a thick grey bar at the edge of the polar plot (around 0°)
+        fig_stereo.add_shape(
+            type='rect',  # Create a rectangle instead of a line for a thick bar
+            x0=0.1,
+            x1=0.11,  # Define width of the bar
+            y0=0.2,
+            y1=0.8,  # Full height of the plot area
+            xref='paper',
+            yref='paper',  # Reference to the full plot area
+            fillcolor='grey',  # Color of the bar
+            line=dict(color='grey', width=0),  # No outline for the rectangle
+            opacity=0.7,  # Adjust the transparency if necessary
+        )
+        # Add text label "Reference Axis" near the 0° position
+        fig_stereo.add_annotation(
+            x=0.1,
+            y=0.48,  # Slightly outside the 0° circle label
+            text='(' + ref_axis + ')',
+            showarrow=False,
+            xref='paper',
+            yref='paper',
+            font=dict(size=12, color='black'),
+        )
+
+        return PlotlyFigure(
+            label='Stereographic Projection', figure=fig_stereo.to_plotly_json()
+        )
+
     # def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
     #     """
     #     The normalizer for the `ParameterList` class.
@@ -195,33 +297,6 @@ class ParameterList(MeasurementResult, PlotSection, ArchiveSection):
     #         logger (BoundLogger): A structlog logger.
     #     """
     #     super().normalize(archive, logger)
-    #     fig = go.Figure()
-    #     fig.add_trace(
-    #         go.Scatter(
-    #             x=self.Scan_Curves[0].omega,
-    #             y=self.Scan_Curves[0].intensity,
-    #             mode='lines',
-    #             name='Omega R',
-    #         )
-    #     )
-    #     fig.add_trace(
-    #         go.Scatter(
-    #             x=self.Scan_Curves[1].omega,
-    #             y=self.Scan_Curves[1].intensity,
-    #             mode='lines',
-    #             name='Omega L',
-    #         )
-    #     )
-
-    #     fig.update_layout(
-    #         height=400,
-    #         width=716,
-    #         title_text='Omega Theta XRD',
-    #         showlegend=True,
-    #         legend=dict(yanchor='top', y=0.99, xanchor='left', x=0.01),
-    #     )
-    #     # self.figures = []
-    #     self.figures.append(PlotlyFigure(label='figure 2', figure=fig.to_plotly_json()))
 
 
 class SampleSpecifications(ArchiveSection):
@@ -274,6 +349,60 @@ class OmegaThetaXRD(Measurement, PlotSection, EntryData, ArchiveSection):
     instruments = SubSection(
         section_def=OmegaThetaXRDInstrumentReference,
     )
+
+    def generate_table_plot(self):
+        # Extract the values for each column from all self.results
+        x_pos_list = [result.x_pos for result in self.results]
+        y_pos_list = [result.y_pos for result in self.results]
+        tilt_list = [f'{result.tilt.magnitude:.3f}' for result in self.results]
+        tilt_direction_list = [
+            f'{result.tilt_direction.magnitude:.1f}' for result in self.results
+        ]
+        component_0_list = [f'{result.component_0:.3f}' for result in self.results]
+        component_90_list = [f'{result.component_90:.3f}' for result in self.results]
+        reference_offset_list = [
+            f'{result.reference_offset:.3f}' for result in self.results
+        ]
+        reference_axis_list = [result.reference_axis for result in self.results]
+
+        fig_table = go.Figure(
+            data=[
+                go.Table(
+                    columnwidth=[1, 1, 1, 1.5, 1.5, 1.5, 1.5, 1.5],
+                    header=dict(
+                        values=[
+                            'X Pos.',
+                            'Y Pos.',
+                            'Tilt',
+                            'Tilt Direction',
+                            'Component 0',
+                            'Component 90',
+                            'Reference Offset',
+                            'Reference Axis',
+                        ],
+                        align='center',
+                    ),
+                    cells=dict(
+                        values=[
+                            x_pos_list,
+                            y_pos_list,
+                            tilt_list,
+                            tilt_direction_list,
+                            component_0_list,
+                            component_90_list,
+                            reference_offset_list,
+                            reference_axis_list,
+                        ],
+                        align='center',
+                    ),
+                )
+            ]
+        )
+        fig_table.update_layout(width=1000, height=200)
+        fig_table.update_layout(
+            margin=dict(l=10, r=10, t=10, b=10)  # Set left, right, top, bottom margins
+        )
+        return PlotlyFigure(label='Table', figure=fig_table.to_plotly_json())
 
     def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
         """
@@ -359,156 +488,17 @@ class OmegaThetaXRD(Measurement, PlotSection, EntryData, ArchiveSection):
 
                     self.figures = []
 
-                    fig = go.Figure()
-                    fig.add_trace(
-                        go.Scatter(
-                            x=self.results[0].Scan_Curves[0].omega,
-                            y=self.results[0].Scan_Curves[0].intensity,
-                            mode='lines',
-                            name='Omega R',
-                        )
-                    )
-                    fig.add_trace(
-                        go.Scatter(
-                            x=self.results[0].Scan_Curves[1].omega,
-                            y=self.results[0].Scan_Curves[1].intensity,
-                            mode='lines',
-                            name='Omega L',
-                        )
-                    )
-
-                    fig.update_layout(
-                        height=400,
-                        width=716,
-                        title_text='Omega Theta XRD',
-                        showlegend=True,
-                        legend=dict(yanchor='top', y=0.99, xanchor='left', x=0.01),
-                        template='plotly_white',
-                        hovermode='closest',
-                        dragmode='zoom',
-                        xaxis=dict(
-                            fixedrange=False,
-                            # autorange=True,
-                            title='Omega (°)',
-                        ),
-                        yaxis=dict(
-                            fixedrange=False,
-                            title='Intensity (a.u.)',
-                        ),
-                    )
                     self.results[0].figures = []
-                    self.results[0].figures.append(
-                        PlotlyFigure(label='Omega Scans', figure=fig.to_plotly_json())
-                    )
+                    self.results[0].figures.append(self.results[0].generate_scan_plot())
 
-                    fig_table = go.Figure(
-                        data=[
-                            go.Table(
-                                columnwidth=[1, 1, 1, 1.5, 1.5, 1.5, 1.5, 1.5],
-                                header=dict(
-                                    values=[
-                                        'X Pos.',
-                                        'Y Pos.',
-                                        'Tilt',
-                                        'Tilt Direction',
-                                        'Component 0',
-                                        'Component 90',
-                                        'Reference Offset',
-                                        'Reference Axis',
-                                    ],
-                                    align='center',
-                                ),
-                                cells=dict(
-                                    values=[
-                                        self.results[0].x_pos,
-                                        self.results[0].y_pos,
-                                        f'{self.results[0].tilt.magnitude:.3f}',
-                                        f'{self.results[0].tilt_direction.magnitude:.1f}',
-                                        f'{self.results[0].component_0:.3f}',
-                                        f'{self.results[0].component_90:.3f}',
-                                        f'{self.results[0].reference_offset:.3f}',
-                                        self.results[0].reference_axis,
-                                    ],
-                                    align='center',
-                                ),
-                            )
-                        ]
-                    )
-                    fig_table.update_layout(width=1000, height=200)
-                    fig_table.update_layout(
-                        margin=dict(
-                            l=10, r=10, t=10, b=10
-                        )  # Set left, right, top, bottom margins
-                    )
-                    self.figures.append(
-                        PlotlyFigure(label='Table', figure=fig_table.to_plotly_json())
-                    )
+                    self.figures.append(self.generate_table_plot())
 
                     if self.results[0].tilt and self.results[0].tilt_direction:
-                        # Werte für Tiltwinkel (Rho) und Azimut (Theta)
-                        rho = self.results[0].tilt.magnitude
-                        theta = self.results[0].tilt_direction.magnitude
-
-                        # Stereographische Projektion mit Plotly erstellen
-                        fig_stereo = go.Figure(
-                            go.Scatterpolar(
-                                r=[0, rho],
-                                theta=[0, theta],
-                                mode='lines+markers',
-                                marker=dict(size=8),
-                            )
-                        )
-
-                        # Layout anpassen, 0 Grad auf 9 Uhr setzen
-                        fig_stereo.update_layout(
-                            polar=dict(
-                                angularaxis=dict(
-                                    rotation=180,  # Rotieren, um 0° auf 9 Uhr zu setzen
-                                    direction='clockwise',
-                                ),
-                                radialaxis=dict(
-                                    range=[0, 0.5],  # Maximalen Radius anpassen
-                                    visible=True,
-                                ),
-                            ),
-                            showlegend=False,
-                            title='Stereographic Projection of the Tilt Angle',
-                        )
-
                         self.figures.append(
-                            PlotlyFigure(
-                                label='Stereographic Projection',
-                                figure=fig_stereo.to_plotly_json(),
-                            )
+                            self.results[0].generate_stereographic_plot()
                         )
-                        # Plot anzeigen
-                        # fig_stereo.show()
-                    # self.figures = []
 
-                    self.figures.append(
-                        PlotlyFigure(label='Omega Scans', figure=fig.to_plotly_json())
-                    )
-                    # fig_sub = make_subplots(
-                    #     rows=2,
-                    #     cols=1,
-                    #     subplot_titles=('Plot 1', 'Plot 2'),  # 'Plot 3'),
-                    #     # specs=[
-                    #     #     [
-                    #     #         {'type': 'table'},
-                    #     #     ],
-                    #     #     [
-                    #     #         {'type': 'scatter'},
-                    #     #     ],  # ,# {'type': 'scatter'}]
-                    #     # ],
-                    # )
-
-                    # # Hinzufügen der beiden Polarplots zu den Subplots
-                    # fig_sub.add_trace(fig_table, row=1, col=1)
-                    # fig_sub.add_trace(fig, row=2, col=1)
-                    # # fig_sub.add_trace(fig, row=3, col=1)
-                    # self.figures.append(
-                    #     PlotlyFigure(label='Sub plot', figure=fig_sub.to_plotly_json())
-                    # )
+                    self.figures.append(self.results[0].generate_scan_plot())
 
                 elif (
                     extract_general_info(xrd_dict.get('MultiMeasurement', {}))['name']
@@ -655,12 +645,12 @@ class OmegaThetaXRD(Measurement, PlotSection, EntryData, ArchiveSection):
                             fig = go.Figure()
 
                             # Define the circle's center and radius
-                            circle_center_x = sum(x_coords) / len(
-                                x_coords
-                            )  # Center of x_coords
-                            circle_center_y = sum(y_coords) / len(
-                                y_coords
-                            )  # Center of y_coords
+                            circle_center_x = 0  # sum(x_coords) / len(
+                            # x_coords
+                            # )  # Center of x_coords
+                            circle_center_y = 0  # sum(y_coords) / len(
+                            # y_coords
+                            # )  # Center of y_coords
                             circle_radius = (
                                 3
                                 + max(
@@ -933,12 +923,12 @@ class OmegaThetaXRD(Measurement, PlotSection, EntryData, ArchiveSection):
                             fig = go.Figure()
 
                             # Define the circle's center and radius
-                            circle_center_x = sum(x_coords) / len(
-                                x_coords
-                            )  # Center of x_coords
-                            circle_center_y = sum(y_coords) / len(
-                                y_coords
-                            )  # Center of y_coords
+                            circle_center_x = 0  # sum(x_coords) / len(
+                            # x_coords
+                            # )  # Center of x_coords
+                            circle_center_y = 0  # sum(y_coords) / len(
+                            # y_coords
+                            # )  # Center of y_coords
                             circle_radius = (
                                 3
                                 + max(
@@ -1023,6 +1013,7 @@ class OmegaThetaXRD(Measurement, PlotSection, EntryData, ArchiveSection):
                                             symbol='arrow',
                                             size=15,
                                             angleref='previous',
+                                            color='blue',
                                         ),
                                         customdata=[
                                             [
@@ -1080,6 +1071,251 @@ class OmegaThetaXRD(Measurement, PlotSection, EntryData, ArchiveSection):
                             )
                             return fig
 
+                        def create_stereographic_projection_plot_cartesian2(
+                            x_coords,
+                            y_coords,
+                            tilt,
+                            tilt_direction,
+                            component_0_values,
+                            component_90_values,
+                            title,
+                        ):
+                            fig = go.Figure()
+
+                            # Define the circle's center and radius
+                            circle_center_x = 0
+                            circle_center_y = 0
+                            circle_radius = (
+                                3
+                                + max(
+                                    max(x_coords) - min(x_coords),
+                                    max(y_coords) - min(y_coords),
+                                )
+                                / 2
+                            )
+
+                            # Add the circle to the plot
+                            fig.add_shape(
+                                type='circle',
+                                xref='x',
+                                yref='y',
+                                x0=circle_center_x - circle_radius,
+                                y0=circle_center_y - circle_radius,
+                                x1=circle_center_x + circle_radius,
+                                y1=circle_center_y + circle_radius,
+                                line=dict(color='darkgrey', width=2),
+                                fillcolor='grey',
+                                opacity=0.3,
+                            )
+
+                            # Loop through each coordinate and plot its stereographic projection as an arrow
+                            for x, y, rho, theta, comp0, comp90 in zip(
+                                x_coords,
+                                y_coords,
+                                tilt,
+                                tilt_direction,
+                                component_0_values,
+                                component_90_values,
+                            ):
+                                fig.add_shape(
+                                    type='rect',
+                                    x0=x - 1.5,
+                                    y0=y - 1.5,
+                                    x1=x + 1.5,
+                                    y1=y + 1.5,
+                                    line=dict(color='grey', width=2),
+                                    fillcolor='white',
+                                    opacity=0,
+                                )
+
+                                # Scaling factor for the projection
+                                scaling_factor = 15
+
+                                # Calculate projection points based on comp0 and comp90
+                                x_projection = x + (comp0 * scaling_factor * (-1))
+                                y_projection = y + (comp90 * scaling_factor)
+
+                                # Add a line from (x, y) to the projected point
+                                fig.add_trace(
+                                    go.Scatter(
+                                        x=[x, x_projection],
+                                        y=[y, y_projection],
+                                        mode='lines',
+                                        line=dict(color='blue', width=2),
+                                        showlegend=False,
+                                    )
+                                )
+
+                                # Add the origin point with hover info
+                                fig.add_trace(
+                                    go.Scatter(
+                                        x=[x],
+                                        y=[y],
+                                        mode='markers',
+                                        marker=dict(
+                                            symbol='circle',
+                                            size=10,
+                                            color='blue',
+                                        ),
+                                        customdata=[
+                                            [x, y, rho, theta]
+                                        ],  # Include custom data for hover at origin
+                                        hovertemplate=(
+                                            'X: %{customdata[0]}<br>'
+                                            'Y: %{customdata[1]}<br>'
+                                            'Tilt Angle: %{customdata[2]:.3f}<br>'
+                                            'Tilt Direction: %{customdata[3]:.1f}°<br>'
+                                            '<extra></extra>'
+                                        ),
+                                        showlegend=False,
+                                    )
+                                )
+
+                                # Add the tip point with the same hover info
+                                fig.add_trace(
+                                    go.Scatter(
+                                        x=[x_projection],
+                                        y=[y_projection],
+                                        mode='markers',
+                                        marker=dict(
+                                            symbol='arrow',
+                                            size=15,
+                                            color='blue',
+                                        ),
+                                        customdata=[
+                                            [
+                                                x,
+                                                y,
+                                                rho,
+                                                theta,
+                                                x_projection,
+                                                y_projection,
+                                            ]
+                                        ],  # Hover data
+                                        hovertemplate=(
+                                            'X: %{customdata[0]}<br>'
+                                            'Y: %{customdata[1]}<br>'
+                                            'Tilt Angle: %{customdata[2]:.3f}<br>'
+                                            'Tilt Direction: %{customdata[3]:.1f}°<br>'
+                                            'X Projection: %{customdata[4]:.1f}<br>'
+                                            'Y Projection: %{customdata[5]:.1f}<br>'
+                                            '<extra></extra>'
+                                        ),
+                                        showlegend=False,
+                                    )
+                                )
+
+                            fig.update_layout(
+                                title=title,
+                                xaxis_title='X Position',
+                                yaxis_title='Y Position',
+                                plot_bgcolor='white',
+                                showlegend=False,
+                                xaxis=dict(
+                                    showgrid=True,
+                                    zeroline=False,
+                                ),
+                                yaxis=dict(
+                                    showgrid=True,
+                                    zeroline=False,
+                                    scaleanchor='x',
+                                    scaleratio=1,
+                                ),
+                            )
+                            return fig
+
+                        import plotly.figure_factory as ff
+                        import plotly.graph_objects as go
+
+                        def create_stereographic_projection_quiver_plot(
+                            x_coords,
+                            y_coords,
+                            tilt_values,
+                            tilt_direction_values,
+                            component_0_values,
+                            component_90_values,
+                            title,
+                            scaling_factor=1,
+                        ):
+                            # Use quiver to plot arrows from the positions defined by x_coords and y_coords
+                            # u (x-component) is component_0_values, v (y-component) is component_90_values
+                            u = [
+                                -comp0 * scaling_factor for comp0 in component_0_values
+                            ]  # Inverted x-component
+                            v = [
+                                comp90 * scaling_factor
+                                for comp90 in component_90_values
+                            ]  # y-component
+
+                            # Create quiver plot
+                            fig = ff.create_quiver(
+                                x_coords,
+                                y_coords,
+                                u,
+                                v,
+                                scale=20,
+                                arrow_scale=0.2,
+                                name='Tilt Direction',
+                            )
+                            # Define the circle's center and radius
+                            circle_center_x = 0
+                            circle_center_y = 0
+                            circle_radius = (
+                                3
+                                + max(
+                                    max(x_coords) - min(x_coords),
+                                    max(y_coords) - min(y_coords),
+                                )
+                                / 2
+                            )
+
+                            # Add the circle to the plot
+                            fig.add_shape(
+                                type='circle',
+                                xref='x',
+                                yref='y',
+                                x0=circle_center_x - circle_radius,
+                                y0=circle_center_y - circle_radius,
+                                x1=circle_center_x + circle_radius,
+                                y1=circle_center_y + circle_radius,
+                                line=dict(color='darkgrey', width=2),
+                                fillcolor='grey',
+                                opacity=0.3,
+                            )
+                            # for x, y, tilt, tilt_dir in zip(
+                            #     x_coords, y_coords, tilt_values, tilt_direction_values
+                            # ):
+                            #     fig.add_annotation(
+                            #         x=x,
+                            #         y=y,
+                            #         text=f'{tilt:.3f}, {tilt_dir:.1f}°',
+                            #         showarrow=False,
+                            #         font=dict(color='black', size=10),
+                            #         xanchor='center',
+                            #         yanchor='middle',
+                            #     )
+
+                            # Add layout settings
+                            fig.update_layout(
+                                title=title,
+                                xaxis_title='X Position',
+                                yaxis_title='Y Position',
+                                plot_bgcolor='white',
+                                showlegend=False,
+                                xaxis=dict(
+                                    showgrid=True,
+                                    zeroline=False,
+                                ),
+                                yaxis=dict(
+                                    showgrid=True,
+                                    zeroline=False,
+                                    scaleanchor='x',  # Make sure x and y are on the same scale
+                                    scaleratio=1,
+                                ),
+                            )
+
+                            return fig
+
                         # Creating plots for each parameter
                         fig_tilt = create_plot(x_coords, y_coords, tilt_values, 'Tilt')
                         fig_tilt_direction = create_plot(
@@ -1115,56 +1351,75 @@ class OmegaThetaXRD(Measurement, PlotSection, EntryData, ArchiveSection):
                             tilt_direction_values,
                             'Stereographic Projection',
                         )
+                        fig_quiver = create_stereographic_projection_quiver_plot(
+                            x_coords,
+                            y_coords,
+                            tilt_values,
+                            tilt_direction_values,
+                            component_0_values,
+                            component_90_values,
+                            'Stereographic Projection',
+                            scaling_factor=1,
+                        )
                         # Displaying the plots
                         # fig_tilt.show()
                         # fig_tilt_direction.show()
                         # fig_component_0.show()
                         self.figures = []
+                        self.figures.append(self.generate_table_plot())
                         self.figures.append(
                             PlotlyFigure(
-                                label='tilt', index=1, figure=fig_tilt.to_plotly_json()
+                                label='tilt',  # index=1,
+                                figure=fig_tilt.to_plotly_json(),
                             )
                         )
                         self.figures.append(
                             PlotlyFigure(
                                 label='tilt direction',
-                                index=2,
+                                # index=2,
                                 figure=fig_tilt_direction.to_plotly_json(),
                             )
                         )
                         self.figures.append(
                             PlotlyFigure(
                                 label='component 0',
-                                index=3,
+                                # index=3,
                                 figure=fig_component_0.to_plotly_json(),
                             )
                         )
                         self.figures.append(
                             PlotlyFigure(
                                 label='component 90',
-                                index=4,
+                                # index=4,
                                 figure=fig_component_90.to_plotly_json(),
                             )
                         )
                         self.figures.append(
                             PlotlyFigure(
                                 label='reference offset',
-                                index=5,
+                                # index=5,
                                 figure=fig_reference_offset.to_plotly_json(),
                             )
                         )
                         self.figures.append(
                             PlotlyFigure(
                                 label='stereographic projection',
-                                index=6,
+                                # index=6,
                                 figure=fig_stereo.to_plotly_json(),
                             )
                         )
                         self.figures.append(
                             PlotlyFigure(
                                 label='cartesian',
-                                index=6,
+                                # index=7,
                                 figure=fig_ster_proj_cart.to_plotly_json(),
+                            )
+                        )
+                        self.figures.append(
+                            PlotlyFigure(
+                                label='quiver',
+                                # index=8,
+                                figure=fig_quiver.to_plotly_json(),
                             )
                         )
 
