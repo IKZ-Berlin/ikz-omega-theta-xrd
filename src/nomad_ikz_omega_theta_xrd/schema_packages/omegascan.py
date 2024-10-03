@@ -22,9 +22,11 @@ from typing import TYPE_CHECKING
 import matplotlib.pyplot as plt
 import numpy as np
 import plotly.colors as pc
+import plotly.figure_factory as ff
 import plotly.graph_objects as go
 from nomad.datamodel.data import ArchiveSection, EntryData
 from nomad.datamodel.metainfo.basesections import (
+    CompositeSystemReference,
     Instrument,
     InstrumentReference,
     Measurement,
@@ -184,6 +186,16 @@ class ParameterList(MeasurementResult, PlotSection, ArchiveSection):
         section_def=ScanCurve,
         repeats=True,
     )
+    show_polar_plot = Quantity(
+        type=bool,
+        description='Generate polar plot',
+        a_eln={'component': 'BoolEditQuantity'},
+    )
+    show_scan_plot = Quantity(
+        type=bool,
+        description='Generate scan plot',
+        a_eln={'component': 'BoolEditQuantity'},
+    )
 
     def generate_scan_plot(self):
         fig = go.Figure()
@@ -249,7 +261,7 @@ class ParameterList(MeasurementResult, PlotSection, ArchiveSection):
                     direction='clockwise',
                 ),
                 radialaxis=dict(
-                    range=[0, 0.5],  # Maximalen Radius anpassen
+                    range=[0, np.ceil(rho * 10) / 10],  # Maximalen Radius anpassen
                     visible=True,
                 ),
             ),
@@ -287,16 +299,24 @@ class ParameterList(MeasurementResult, PlotSection, ArchiveSection):
             label='Stereographic Projection', figure=fig_stereo.to_plotly_json()
         )
 
-    # def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
-    #     """
-    #     The normalizer for the `ParameterList` class.
+    def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
+        """
+        The normalizer for the `ParameterList` class.
 
-    #     Args:
-    #         archive (EntryArchive): The archive containing the section that is being
-    #         normalized.
-    #         logger (BoundLogger): A structlog logger.
-    #     """
-    #     super().normalize(archive, logger)
+        Args:
+            archive (EntryArchive): The archive containing the section that is being
+            normalized.
+            logger (BoundLogger): A structlog logger.
+        """
+        if self.show_polar_plot is True:
+            self.figures.append(self.generate_stereographic_plot())
+        if self.show_scan_plot is True:
+            self.figures.append(self.generate_scan_plot())
+        super().normalize(archive, logger)
+
+
+class Samples(CompositeSystemReference):
+    m_def = Section(label='Sample', a_eln=dict(overview=True))
 
 
 class SampleSpecifications(ArchiveSection):
@@ -338,10 +358,11 @@ class OmegaThetaXRD(Measurement, PlotSection, EntryData, ArchiveSection):
         description='Type of the measurement',
         a_eln={'component': 'EnumEditQuantity'},
     )
-
+    samples = SubSection(section_def=Samples, repeats=True)
     sample_specifications = SubSection(
         section_def=SampleSpecifications,
     )
+
     results = SubSection(
         section_def=ParameterList,
         repeats=True,
@@ -368,7 +389,7 @@ class OmegaThetaXRD(Measurement, PlotSection, EntryData, ArchiveSection):
         fig_table = go.Figure(
             data=[
                 go.Table(
-                    columnwidth=[1, 1, 1, 1.5, 1.5, 1.5, 1.5, 1.5],
+                    columnwidth=[1, 1, 1, 1.5, 2, 2, 1.8, 1.8],
                     header=dict(
                         values=[
                             'X Pos.',
@@ -400,7 +421,7 @@ class OmegaThetaXRD(Measurement, PlotSection, EntryData, ArchiveSection):
         )
         fig_table.update_layout(width=1000, height=200)
         fig_table.update_layout(
-            margin=dict(l=10, r=10, t=10, b=10)  # Set left, right, top, bottom margins
+            margin=dict(l=1, r=1, t=1, b=1)  # Set left, right, top, bottom margins
         )
         return PlotlyFigure(label='Table', figure=fig_table.to_plotly_json())
 
@@ -413,7 +434,7 @@ class OmegaThetaXRD(Measurement, PlotSection, EntryData, ArchiveSection):
             normalized.
             logger (BoundLogger): A structlog logger.
         """
-        super().normalize(archive, logger)
+        # super().normalize(archive, logger)
 
         if self.data_file is not None:
             # read_function = extract_data_and_metadata
@@ -446,6 +467,34 @@ class OmegaThetaXRD(Measurement, PlotSection, EntryData, ArchiveSection):
                     )
                     self.scan_recipe_name = info_dict.get('scan_recipe_name')
                     self.measurement_type = 'single measurement'
+                    self.samples = []
+                    if '-MI_' or '-XY_' in self.data_file:
+                        sampleid = self.data_file.split('_')[0][:-3]
+                    else:
+                        sampleid = self.data_file
+                    sample = Samples(lab_id=sampleid)
+                    self.samples.append(sample)
+                    samplespecs = SampleSpecifications()
+                    if '-NU' in self.data_file:
+                        samplespecs.sample_side_facing_down = 'N unten'
+                    elif '-AU' in self.data_file:
+                        samplespecs.sample_side_facing_down = 'Al unten'
+                    sampleprep = ''
+                    if '-AL' in self.data_file:
+                        sampleprep += 'Al polar lapped, '
+                    elif '-AP' in self.data_file:
+                        sampleprep += 'Al polar polished, '
+                    elif '-AS' in self.data_file:
+                        sampleprep += 'Al polar sawed, '
+                    if '-NL' in self.data_file:
+                        sampleprep += 'N polar lapped'
+                    elif '-NP' in self.data_file:
+                        sampleprep += 'N polar polished'
+                    elif '-NS' in self.data_file:
+                        sampleprep += 'N polar sawed'
+                    samplespecs.sample_preparation_status = sampleprep
+                    self.sample_specifications = samplespecs
+
                     results = ParameterList()
                     results.name = info_dict.get('name')
                     results.x_pos = float(paramter_dict.get('xpos'))
@@ -515,6 +564,33 @@ class OmegaThetaXRD(Measurement, PlotSection, EntryData, ArchiveSection):
                     )
                     self.scan_recipe_name = info_dict.get('scan_recipe_name')
                     self.measurement_type = 'mapping'
+                    self.samples = []
+                    if '-MI_' or '-XY_' in self.data_file:
+                        sampleid = self.data_file.split('_')[0][:-3]
+                    else:
+                        sampleid = self.data_file
+                    sample = Samples(lab_id=sampleid)
+                    self.samples.append(sample)
+                    samplespecs = SampleSpecifications()
+                    if '-NU' in self.data_file:
+                        samplespecs.sample_side_facing_down = 'N unten'
+                    elif '-AU' in self.data_file:
+                        samplespecs.sample_side_facing_down = 'Al unten'
+                    sampleprep = ''
+                    if '-AL' in self.data_file:
+                        sampleprep += 'Al polar lapped, '
+                    elif '-AP' in self.data_file:
+                        sampleprep += 'Al polar polished, '
+                    elif '-AS' in self.data_file:
+                        sampleprep += 'Al polar sawed, '
+                    if '-NL' in self.data_file:
+                        sampleprep += 'N polar lapped'
+                    elif '-NP' in self.data_file:
+                        sampleprep += 'N polar polished'
+                    elif '-NS' in self.data_file:
+                        sampleprep += 'N polar sawed'
+                    samplespecs.sample_preparation_status = sampleprep
+                    self.sample_specifications = samplespecs
                     for measurement in (
                         xrd_dict.get('MultiMeasurement', {})
                         .get('Measurements', {})
@@ -1224,9 +1300,6 @@ class OmegaThetaXRD(Measurement, PlotSection, EntryData, ArchiveSection):
                             )
                             return fig
 
-                        import plotly.figure_factory as ff
-                        import plotly.graph_objects as go
-
                         def create_stereographic_projection_quiver_plot(
                             x_coords,
                             y_coords,
@@ -1247,15 +1320,24 @@ class OmegaThetaXRD(Measurement, PlotSection, EntryData, ArchiveSection):
                                 for comp90 in component_90_values
                             ]  # y-component
 
+                            hovertext = [
+                                f'Tilt: {tilt:.3f}<br>Direction: {tilt_dir:.1f}°'
+                                for tilt, tilt_dir in zip(
+                                    tilt_values, tilt_direction_values
+                                )
+                            ]
+
                             # Create quiver plot
                             fig = ff.create_quiver(
                                 x_coords,
                                 y_coords,
                                 u,
                                 v,
-                                scale=20,
+                                scale=15,
                                 arrow_scale=0.2,
                                 name='Tilt Direction',
+                                hoverinfo='text',
+                                text=hovertext,  # Add hover text for each arrow
                             )
                             # Define the circle's center and radius
                             circle_center_x = 0
@@ -1305,13 +1387,17 @@ class OmegaThetaXRD(Measurement, PlotSection, EntryData, ArchiveSection):
                                 xaxis=dict(
                                     showgrid=True,
                                     zeroline=False,
+                                    fixedrange=False,
                                 ),
                                 yaxis=dict(
                                     showgrid=True,
                                     zeroline=False,
                                     scaleanchor='x',  # Make sure x and y are on the same scale
                                     scaleratio=1,
+                                    fixedrange=False,
                                 ),
+                                hovermode='closest',
+                                dragmode='zoom',
                             )
 
                             return fig
@@ -1438,6 +1524,7 @@ class OmegaThetaXRD(Measurement, PlotSection, EntryData, ArchiveSection):
         # self.figures.append(
         #     PlotlyFigure(label='figure 1', index=1, figure=figure1.to_plotly_json())
         # )
+        super().normalize(archive, logger)
 
 
 m_package.__init_metainfo__()
