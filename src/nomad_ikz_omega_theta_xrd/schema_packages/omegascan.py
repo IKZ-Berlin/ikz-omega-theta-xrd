@@ -191,11 +191,6 @@ class ParameterList(MeasurementResult, PlotSection, ArchiveSection):
         description='Generate polar plot',
         a_eln={'component': 'BoolEditQuantity'},
     )
-    show_scan_plot = Quantity(
-        type=bool,
-        description='Generate scan plot',
-        a_eln={'component': 'BoolEditQuantity'},
-    )
 
     def generate_scan_plot(self):
         fig = go.Figure()
@@ -310,8 +305,7 @@ class ParameterList(MeasurementResult, PlotSection, ArchiveSection):
         """
         if self.show_polar_plot is True:
             self.figures.append(self.generate_stereographic_plot())
-        if self.show_scan_plot is True:
-            self.figures.append(self.generate_scan_plot())
+
         super().normalize(archive, logger)
 
 
@@ -838,6 +832,8 @@ class OmegaThetaXRD(Measurement, PlotSection, EntryData, ArchiveSection):
                                     scaleanchor='x',
                                     scaleratio=1,
                                 ),
+                                hovermode='closest',
+                                dragmode='zoom',
                             )
                             return fig
 
@@ -1321,9 +1317,12 @@ class OmegaThetaXRD(Measurement, PlotSection, EntryData, ArchiveSection):
                             ]  # y-component
 
                             hovertext = [
-                                f'Tilt: {tilt:.3f}<br>Direction: {tilt_dir:.1f}°'
-                                for tilt, tilt_dir in zip(
-                                    tilt_values, tilt_direction_values
+                                f'X: {x}<br>Y: {y}<br>Tilt: {tilt:.3f}<br>Direction: {tilt_dir:.1f}°'
+                                for x, y, tilt, tilt_dir in zip(
+                                    x_coords,
+                                    y_coords,
+                                    tilt_values,
+                                    tilt_direction_values,
                                 )
                             ]
 
@@ -1419,24 +1418,24 @@ class OmegaThetaXRD(Measurement, PlotSection, EntryData, ArchiveSection):
                             reference_offset_values,
                             'Reference Offset',
                         )
-                        fig_ster_proj_cart = (
-                            create_stereographic_projection_plot_cartesian(
-                                x_coords,
-                                y_coords,
-                                tilt_values,
-                                tilt_direction_values,
-                                component_0_values,
-                                component_90_values,
-                                'cartesian',
-                            )
-                        )
-                        fig_stereo = create_stereographic_projection_plot(
-                            x_coords,
-                            y_coords,
-                            tilt_values,
-                            tilt_direction_values,
-                            'Stereographic Projection',
-                        )
+                        # fig_ster_proj_cart = (
+                        #     create_stereographic_projection_plot_cartesian(
+                        #         x_coords,
+                        #         y_coords,
+                        #         tilt_values,
+                        #         tilt_direction_values,
+                        #         component_0_values,
+                        #         component_90_values,
+                        #         'cartesian',
+                        #     )
+                        # )
+                        # fig_stereo = create_stereographic_projection_plot(
+                        #     x_coords,
+                        #     y_coords,
+                        #     tilt_values,
+                        #     tilt_direction_values,
+                        #     'Stereographic Projection',
+                        # )
                         fig_quiver = create_stereographic_projection_quiver_plot(
                             x_coords,
                             y_coords,
@@ -1487,23 +1486,23 @@ class OmegaThetaXRD(Measurement, PlotSection, EntryData, ArchiveSection):
                                 figure=fig_reference_offset.to_plotly_json(),
                             )
                         )
+                        # self.figures.append(
+                        #     PlotlyFigure(
+                        #         label='stereographic projection',
+                        #         # index=6,
+                        #         figure=fig_stereo.to_plotly_json(),
+                        #     )
+                        # )
+                        # self.figures.append(
+                        #     PlotlyFigure(
+                        #         label='cartesian',
+                        #         # index=7,
+                        #         figure=fig_ster_proj_cart.to_plotly_json(),
+                        #     )
+                        # )
                         self.figures.append(
                             PlotlyFigure(
-                                label='stereographic projection',
-                                # index=6,
-                                figure=fig_stereo.to_plotly_json(),
-                            )
-                        )
-                        self.figures.append(
-                            PlotlyFigure(
-                                label='cartesian',
-                                # index=7,
-                                figure=fig_ster_proj_cart.to_plotly_json(),
-                            )
-                        )
-                        self.figures.append(
-                            PlotlyFigure(
-                                label='quiver',
+                                label='Stereographic Projection',
                                 # index=8,
                                 figure=fig_quiver.to_plotly_json(),
                             )
