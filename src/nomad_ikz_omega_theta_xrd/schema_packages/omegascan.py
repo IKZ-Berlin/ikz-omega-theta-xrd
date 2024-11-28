@@ -352,6 +352,19 @@ class OmegaThetaXRD(Measurement, PlotSection, EntryData, ArchiveSection):
         description='Type of the measurement',
         a_eln={'component': 'EnumEditQuantity'},
     )
+    wafer_diameter = Quantity(
+        type=np.float64,
+        description='The diameter of the wafer that is measured',
+        a_eln={'component': 'NumberEditQuantity'},
+        # unit='cm', ?
+    )
+    grid_size = Quantity(
+        type=np.float64,
+        description='Grid size of the mapping',
+        a_eln={'component': 'NumberEditQuantity'},
+        # unit='cm', ?
+    )
+    
     samples = SubSection(section_def=Samples, repeats=True)
     sample_specifications = SubSection(
         section_def=SampleSpecifications,
@@ -367,8 +380,8 @@ class OmegaThetaXRD(Measurement, PlotSection, EntryData, ArchiveSection):
 
     def generate_table_plot(self):
         # Extract the values for each column from all self.results
-        x_pos_list = [result.x_pos for result in self.results]
-        y_pos_list = [result.y_pos for result in self.results]
+        x_pos_list = [f'{result.x_pos:.1f}' for result in self.results]
+        y_pos_list = [f'{result.y_pos:.1f}' for result in self.results]
         tilt_list = [f'{result.tilt.magnitude:.3f}' for result in self.results]
         tilt_direction_list = [
             f'{result.tilt_direction.magnitude:.1f}' for result in self.results
@@ -461,6 +474,7 @@ class OmegaThetaXRD(Measurement, PlotSection, EntryData, ArchiveSection):
                     )
                     self.scan_recipe_name = info_dict.get('scan_recipe_name')
                     self.measurement_type = 'single measurement'
+                    self.wafer_diameter = float(info_dict.get('wafer_diameter'))
                     self.samples = []
                     if '-MI_' or '-XY_' in self.data_file:
                         sampleid = self.data_file.split('_')[0][:-3]
@@ -558,6 +572,8 @@ class OmegaThetaXRD(Measurement, PlotSection, EntryData, ArchiveSection):
                     )
                     self.scan_recipe_name = info_dict.get('scan_recipe_name')
                     self.measurement_type = 'mapping'
+                    self.wafer_diameter = float(info_dict.get('wafer_diameter'))
+                    self.grid_size = float(info_dict.get('grid_size'))
                     self.samples = []
                     if '-MI_' or '-XY_' in self.data_file:
                         sampleid = self.data_file.split('_')[0][:-3]
@@ -721,14 +737,15 @@ class OmegaThetaXRD(Measurement, PlotSection, EntryData, ArchiveSection):
                             circle_center_y = 0  # sum(y_coords) / len(
                             # y_coords
                             # )  # Center of y_coords
-                            circle_radius = (
-                                3
-                                + max(
-                                    max(x_coords) - min(x_coords),
-                                    max(y_coords) - min(y_coords),
-                                )
-                                / 2
-                            )
+                            circle_radius = self.wafer_diameter/2
+                            # (
+                            #     1
+                            #     + max(
+                            #         max(x_coords) - min(x_coords),
+                            #         max(y_coords) - min(y_coords),
+                            #     )
+                            #     / 2
+                            # )
 
                             # Add the circle to the plot
                             fig.add_shape(
@@ -756,12 +773,13 @@ class OmegaThetaXRD(Measurement, PlotSection, EntryData, ArchiveSection):
                                     text_format = f'{float(value):.3f}'
 
                                 # Adding box around the text with color gradient
+                                grid_size=self.grid_size
                                 fig.add_shape(
                                     type='rect',
-                                    x0=x - 1.5,
-                                    y0=y - 1.5,
-                                    x1=x + 1.5,
-                                    y1=y + 1.5,
+                                    x0=x - grid_size/2,
+                                    y0=y - grid_size/2,
+                                    x1=x + grid_size/2,
+                                    y1=y + grid_size/2,
                                     line=dict(color=color, width=2),
                                     fillcolor=color,
                                     opacity=1,
@@ -1304,15 +1322,135 @@ class OmegaThetaXRD(Measurement, PlotSection, EntryData, ArchiveSection):
                             component_0_values,
                             component_90_values,
                             title,
-                            scaling_factor=1,
+                            wafer_diameter=25,  # Default wafer diameter
+                        ):
+                            # Compute the u and v components
+                            u = [-comp0 for comp0 in component_0_values]  # Inverted x-component
+                            v = [comp90 for comp90 in component_90_values]  # y-component
+
+                            # Create hover text
+                            hovertext = [
+                                f'X: {x}<br>Y: {y}<br>Tilt: {tilt:.3f}<br>Direction: {tilt_dir:.1f}°'
+                                for x, y, tilt, tilt_dir in zip(
+                                    x_coords, y_coords, tilt_values, tilt_direction_values
+                                )
+                            ]
+
+                            # Define slider steps and frames
+                            steps = []
+                            frames = []
+                            scales = np.linspace(1, 20, 20)  # Range of scale values for the slider
+
+                            for i, scale in enumerate(scales):
+                                # Create quiver plot for each scale
+                                quiver = ff.create_quiver(
+                                    x_coords,
+                                    y_coords,
+                                    u,
+                                    v,
+                                    scale=scale,
+                                    arrow_scale=0.2,
+                                    name="Tilt Direction",
+                                    hoverinfo="text",
+                                    text=hovertext,
+                                )
+                                # Add frame for the current scale
+                                frames.append(dict(data=quiver.data, name=f"frame{i}"))
+
+                                # Add a step to the slider
+                                step = dict(
+                                    method="animate",
+                                    args=[
+                                        [f"frame{i}"],  # The frame name to animate to
+                                        dict(frame=dict(duration=0, redraw=True), mode="immediate"),
+                                    ],
+                                    label=f"Scale: {scale:.1f}",
+                                )
+                                steps.append(step)
+
+                            # Create the initial quiver plot with the first scale
+                            initial_scale = scales[0]
+                            fig = ff.create_quiver(
+                                x_coords,
+                                y_coords,
+                                u,
+                                v,
+                                scale=initial_scale,
+                                arrow_scale=0.2,
+                                name="Tilt Direction",
+                                hoverinfo="text",
+                                text=hovertext,
+                            )
+
+                            # Add the circle representing the wafer
+                            circle_center_x = 0
+                            circle_center_y = 0
+                            circle_radius = wafer_diameter / 2
+
+                            fig.add_shape(
+                                type="circle",
+                                xref="x",
+                                yref="y",
+                                x0=circle_center_x - circle_radius,
+                                y0=circle_center_y - circle_radius,
+                                x1=circle_center_x + circle_radius,
+                                y1=circle_center_y + circle_radius,
+                                line=dict(color="darkgrey", width=2),
+                                fillcolor="grey",
+                                opacity=0.3,
+                            )
+
+                            # Add frames and slider to the figure
+                            fig.frames = frames
+                            sliders = [
+                                dict(
+                                    steps=steps,
+                                    active=0,
+                                    currentvalue={"prefix": "Scale: "},
+                                )
+                            ]
+
+                            # Update the layout to include the slider
+                            fig.update_layout(
+                                sliders=sliders,
+                                title=title,
+                                xaxis_title="X Position",
+                                yaxis_title="Y Position",
+                                plot_bgcolor="white",
+                                showlegend=False,
+                                xaxis=dict(showgrid=True, zeroline=False, fixedrange=False),
+                                yaxis=dict(
+                                    showgrid=True,
+                                    zeroline=False,
+                                    scaleanchor="x",
+                                    scaleratio=1,
+                                    fixedrange=False,
+                                ),
+                                hovermode="closest",
+                                dragmode="zoom",
+                            )
+
+                            return fig
+
+
+
+                        def create_stereographic_projection_quiver_plot_alt(
+                            x_coords,
+                            y_coords,
+                            tilt_values,
+                            tilt_direction_values,
+                            component_0_values,
+                            component_90_values,
+                            title,
+                            #scaling_factor=1,
                         ):
                             # Use quiver to plot arrows from the positions defined by x_coords and y_coords
                             # u (x-component) is component_0_values, v (y-component) is component_90_values
                             u = [
-                                -comp0 * scaling_factor for comp0 in component_0_values
+                                -comp0  for comp0 in component_0_values
                             ]  # Inverted x-component
                             v = [
-                                comp90 * scaling_factor
+                                comp90 
                                 for comp90 in component_90_values
                             ]  # y-component
 
@@ -1327,6 +1465,10 @@ class OmegaThetaXRD(Measurement, PlotSection, EntryData, ArchiveSection):
                             ]
 
                             # Create quiver plot
+                            # if self.wafer_diameter>=25:
+                            #     scaling=15
+                            # elif self.wafer_diameter <=10:
+                            #     scaling=2
                             fig = ff.create_quiver(
                                 x_coords,
                                 y_coords,
@@ -1341,14 +1483,7 @@ class OmegaThetaXRD(Measurement, PlotSection, EntryData, ArchiveSection):
                             # Define the circle's center and radius
                             circle_center_x = 0
                             circle_center_y = 0
-                            circle_radius = (
-                                3
-                                + max(
-                                    max(x_coords) - min(x_coords),
-                                    max(y_coords) - min(y_coords),
-                                )
-                                / 2
-                            )
+                            circle_radius = self.wafer_diameter/2
 
                             # Add the circle to the plot
                             fig.add_shape(
@@ -1363,18 +1498,6 @@ class OmegaThetaXRD(Measurement, PlotSection, EntryData, ArchiveSection):
                                 fillcolor='grey',
                                 opacity=0.3,
                             )
-                            # for x, y, tilt, tilt_dir in zip(
-                            #     x_coords, y_coords, tilt_values, tilt_direction_values
-                            # ):
-                            #     fig.add_annotation(
-                            #         x=x,
-                            #         y=y,
-                            #         text=f'{tilt:.3f}, {tilt_dir:.1f}°',
-                            #         showarrow=False,
-                            #         font=dict(color='black', size=10),
-                            #         xanchor='center',
-                            #         yanchor='middle',
-                            #     )
 
                             # Add layout settings
                             fig.update_layout(
@@ -1444,7 +1567,7 @@ class OmegaThetaXRD(Measurement, PlotSection, EntryData, ArchiveSection):
                             component_0_values,
                             component_90_values,
                             'Stereographic Projection',
-                            scaling_factor=1,
+                            wafer_diameter=self.wafer_diameter,
                         )
                         # Displaying the plots
                         # fig_tilt.show()

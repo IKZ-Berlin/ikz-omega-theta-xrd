@@ -43,6 +43,8 @@ def extract_general_info(
         'x_pos': xrd_dict.get('Info', {}).get('XPos'),
         'y_pos': xrd_dict.get('Info', {}).get('YPos'),
         'device_serial_no': xrd_dict.get('Info', {}).get('DeviceSerialNo'),
+        'wafer_diameter': xrd_dict.get('WaferInfo', {}).get('Diameter'),
+        'grid_size': xrd_dict.get('WaferInfo', {}).get('GridSize')
     }
     return general_info
 
