@@ -1364,7 +1364,7 @@ class OmegaThetaXRD(Measurement, PlotSection, EntryData, ArchiveSection):
                                         [f"frame{i}"],  # The frame name to animate to
                                         dict(frame=dict(duration=0, redraw=True), mode="immediate"),
                                     ],
-                                    label=f"Scale: {scale:.1f}",
+                                    label=f"{scale:.1f}",
                                 )
                                 steps.append(step)
 
@@ -1465,16 +1465,16 @@ class OmegaThetaXRD(Measurement, PlotSection, EntryData, ArchiveSection):
                             ]
 
                             # Create quiver plot
-                            # if self.wafer_diameter>=25:
-                            #     scaling=15
-                            # elif self.wafer_diameter <=10:
-                            #     scaling=2
+                            if self.wafer_diameter>=25:
+                                scaling=15
+                            elif self.wafer_diameter <=10:
+                                scaling=2
                             fig = ff.create_quiver(
                                 x_coords,
                                 y_coords,
                                 u,
                                 v,
-                                scale=15,
+                                scale=scaling,
                                 arrow_scale=0.2,
                                 name='Tilt Direction',
                                 hoverinfo='text',
@@ -1569,6 +1569,15 @@ class OmegaThetaXRD(Measurement, PlotSection, EntryData, ArchiveSection):
                             'Stereographic Projection',
                             wafer_diameter=self.wafer_diameter,
                         )
+                        fig_quiver_alt = create_stereographic_projection_quiver_plot_alt(
+                            x_coords,
+                            y_coords,
+                            tilt_values,
+                            tilt_direction_values,
+                            component_0_values,
+                            component_90_values,
+                            'Stereographic Projection',
+                        )
                         # Displaying the plots
                         # fig_tilt.show()
                         # fig_tilt_direction.show()
@@ -1628,6 +1637,13 @@ class OmegaThetaXRD(Measurement, PlotSection, EntryData, ArchiveSection):
                                 label='Stereographic Projection',
                                 # index=8,
                                 figure=fig_quiver.to_plotly_json(),
+                            )
+                        )
+                        self.figures.append(
+                            PlotlyFigure(
+                                label='Stereographic Projection',
+                                # index=8,
+                                figure=fig_quiver_alt.to_plotly_json(),
                             )
                         )
 
