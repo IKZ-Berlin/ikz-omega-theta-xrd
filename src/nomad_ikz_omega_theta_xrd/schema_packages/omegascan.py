@@ -67,6 +67,17 @@ class OmegaThetaXRDInstrument(Instrument, EntryData, ArchiveSection):
         default='26-0019',
         label='serial_number',
     )
+    def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
+        """
+        The normalizer for the `OmegaThetaXRDInstrument` class.
+
+        Args:
+            archive (EntryArchive): The archive containing the section that is being
+            normalized.
+            logger (BoundLogger): A structlog logger.
+        """
+        super().normalize(archive, logger)
+
 
 
 class OmegaThetaXRDInstrumentReference(InstrumentReference):
@@ -82,6 +93,16 @@ class OmegaThetaXRDInstrumentReference(InstrumentReference):
             'label': 'omega_theta_xrd_instrument',
         },
     )
+    def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
+        """
+        The normalizer for the `OmegaThetaXRDInstrumentReference` class.
+
+        Args:
+            archive (EntryArchive): The archive containing the section that is being
+            normalized.
+            logger (BoundLogger): A structlog logger.
+        """
+        super().normalize(archive, logger)
 
 
 class ScanCurve(PlotSection, ArchiveSection):
@@ -474,7 +495,8 @@ class OmegaThetaXRD(Measurement, PlotSection, EntryData, ArchiveSection):
                     )
                     self.scan_recipe_name = info_dict.get('scan_recipe_name')
                     self.measurement_type = 'single measurement'
-                    self.wafer_diameter = float(info_dict.get('wafer_diameter'))
+                    if info_dict.get('wafer_diameter'):
+                        self.wafer_diameter = float(info_dict.get('wafer_diameter'))
                     self.samples = []
                     if '-MI_' or '-XY_' in self.data_file:
                         sampleid = self.data_file.split('_')[0][:-3]
@@ -529,7 +551,7 @@ class OmegaThetaXRD(Measurement, PlotSection, EntryData, ArchiveSection):
 
                     xrdinstrumentref = OmegaThetaXRDInstrumentReference()
                     xrdinstrumentref.lab_id = info_dict.get('device_serial_no')
-                    # xrdinstrumentref.normalize(archive, logger)
+                    xrdinstrumentref.normalize(archive, logger)
                     if xrdinstrumentref.reference is None:
                         xrdinstrument = OmegaThetaXRDInstrument(
                             lab_id=xrdinstrumentref.lab_id
@@ -637,7 +659,7 @@ class OmegaThetaXRD(Measurement, PlotSection, EntryData, ArchiveSection):
 
                         xrdinstrumentref = OmegaThetaXRDInstrumentReference()
                         xrdinstrumentref.lab_id = info_dict.get('device_serial_no')
-                        # xrdinstrumentref.normalize(archive, logger)
+                        xrdinstrumentref.normalize(archive, logger)
                         if xrdinstrumentref.reference is None:
                             xrdinstrument = OmegaThetaXRDInstrument(
                                 lab_id=xrdinstrumentref.lab_id
