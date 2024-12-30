@@ -67,6 +67,7 @@ class OmegaThetaXRDInstrument(Instrument, EntryData, ArchiveSection):
         default='26-0019',
         label='serial_number',
     )
+
     def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
         """
         The normalizer for the `OmegaThetaXRDInstrument` class.
@@ -77,7 +78,6 @@ class OmegaThetaXRDInstrument(Instrument, EntryData, ArchiveSection):
             logger (BoundLogger): A structlog logger.
         """
         super().normalize(archive, logger)
-
 
 
 class OmegaThetaXRDInstrumentReference(InstrumentReference):
@@ -93,6 +93,7 @@ class OmegaThetaXRDInstrumentReference(InstrumentReference):
             'label': 'omega_theta_xrd_instrument',
         },
     )
+
     def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
         """
         The normalizer for the `OmegaThetaXRDInstrumentReference` class.
@@ -385,7 +386,7 @@ class OmegaThetaXRD(Measurement, PlotSection, EntryData, ArchiveSection):
         a_eln={'component': 'NumberEditQuantity'},
         # unit='cm', ?
     )
-    
+
     samples = SubSection(section_def=Samples, repeats=True)
     sample_specifications = SubSection(
         section_def=SampleSpecifications,
@@ -759,7 +760,7 @@ class OmegaThetaXRD(Measurement, PlotSection, EntryData, ArchiveSection):
                             circle_center_y = 0  # sum(y_coords) / len(
                             # y_coords
                             # )  # Center of y_coords
-                            circle_radius = self.wafer_diameter/2
+                            circle_radius = self.wafer_diameter / 2
                             # (
                             #     1
                             #     + max(
@@ -795,13 +796,13 @@ class OmegaThetaXRD(Measurement, PlotSection, EntryData, ArchiveSection):
                                     text_format = f'{float(value):.3f}'
 
                                 # Adding box around the text with color gradient
-                                grid_size=self.grid_size
+                                grid_size = self.grid_size
                                 fig.add_shape(
                                     type='rect',
-                                    x0=x - grid_size/2,
-                                    y0=y - grid_size/2,
-                                    x1=x + grid_size/2,
-                                    y1=y + grid_size/2,
+                                    x0=x - grid_size / 2,
+                                    y0=y - grid_size / 2,
+                                    x1=x + grid_size / 2,
+                                    y1=y + grid_size / 2,
                                     line=dict(color=color, width=2),
                                     fillcolor=color,
                                     opacity=1,
@@ -1347,21 +1348,30 @@ class OmegaThetaXRD(Measurement, PlotSection, EntryData, ArchiveSection):
                             wafer_diameter=25,  # Default wafer diameter
                         ):
                             # Compute the u and v components
-                            u = [-comp0 for comp0 in component_0_values]  # Inverted x-component
-                            v = [comp90 for comp90 in component_90_values]  # y-component
+                            u = [
+                                -comp0 for comp0 in component_0_values
+                            ]  # Inverted x-component
+                            v = [
+                                comp90 for comp90 in component_90_values
+                            ]  # y-component
 
                             # Create hover text
                             hovertext = [
                                 f'X: {x}<br>Y: {y}<br>Tilt: {tilt:.3f}<br>Direction: {tilt_dir:.1f}°'
                                 for x, y, tilt, tilt_dir in zip(
-                                    x_coords, y_coords, tilt_values, tilt_direction_values
+                                    x_coords,
+                                    y_coords,
+                                    tilt_values,
+                                    tilt_direction_values,
                                 )
                             ]
 
                             # Define slider steps and frames
                             steps = []
                             frames = []
-                            scales = np.linspace(1, 20, 20)  # Range of scale values for the slider
+                            scales = np.linspace(
+                                1, 20, 20
+                            )  # Range of scale values for the slider
 
                             for i, scale in enumerate(scales):
                                 # Create quiver plot for each scale
@@ -1372,21 +1382,24 @@ class OmegaThetaXRD(Measurement, PlotSection, EntryData, ArchiveSection):
                                     v,
                                     scale=scale,
                                     arrow_scale=0.2,
-                                    name="Tilt Direction",
-                                    hoverinfo="text",
+                                    name='Tilt Direction',
+                                    hoverinfo='text',
                                     text=hovertext,
                                 )
                                 # Add frame for the current scale
-                                frames.append(dict(data=quiver.data, name=f"frame{i}"))
+                                frames.append(dict(data=quiver.data, name=f'frame{i}'))
 
                                 # Add a step to the slider
                                 step = dict(
-                                    method="animate",
+                                    method='animate',
                                     args=[
-                                        [f"frame{i}"],  # The frame name to animate to
-                                        dict(frame=dict(duration=0, redraw=True), mode="immediate"),
+                                        [f'frame{i}'],  # The frame name to animate to
+                                        dict(
+                                            frame=dict(duration=0, redraw=True),
+                                            mode='immediate',
+                                        ),
                                     ],
-                                    label=f"{scale:.1f}",
+                                    label=f'{scale:.1f}',
                                 )
                                 steps.append(step)
 
@@ -1399,8 +1412,8 @@ class OmegaThetaXRD(Measurement, PlotSection, EntryData, ArchiveSection):
                                 v,
                                 scale=initial_scale,
                                 arrow_scale=0.2,
-                                name="Tilt Direction",
-                                hoverinfo="text",
+                                name='Tilt Direction',
+                                hoverinfo='text',
                                 text=hovertext,
                             )
 
@@ -1410,15 +1423,15 @@ class OmegaThetaXRD(Measurement, PlotSection, EntryData, ArchiveSection):
                             circle_radius = wafer_diameter / 2
 
                             fig.add_shape(
-                                type="circle",
-                                xref="x",
-                                yref="y",
+                                type='circle',
+                                xref='x',
+                                yref='y',
                                 x0=circle_center_x - circle_radius,
                                 y0=circle_center_y - circle_radius,
                                 x1=circle_center_x + circle_radius,
                                 y1=circle_center_y + circle_radius,
-                                line=dict(color="darkgrey", width=2),
-                                fillcolor="grey",
+                                line=dict(color='darkgrey', width=2),
+                                fillcolor='grey',
                                 opacity=0.3,
                             )
 
@@ -1428,7 +1441,7 @@ class OmegaThetaXRD(Measurement, PlotSection, EntryData, ArchiveSection):
                                 dict(
                                     steps=steps,
                                     active=0,
-                                    currentvalue={"prefix": "Scale: "},
+                                    currentvalue={'prefix': 'Scale: '},
                                 )
                             ]
 
@@ -1436,25 +1449,25 @@ class OmegaThetaXRD(Measurement, PlotSection, EntryData, ArchiveSection):
                             fig.update_layout(
                                 sliders=sliders,
                                 title=title,
-                                xaxis_title="X Position",
-                                yaxis_title="Y Position",
-                                plot_bgcolor="white",
+                                xaxis_title='X Position',
+                                yaxis_title='Y Position',
+                                plot_bgcolor='white',
                                 showlegend=False,
-                                xaxis=dict(showgrid=True, zeroline=False, fixedrange=False),
+                                xaxis=dict(
+                                    showgrid=True, zeroline=False, fixedrange=False
+                                ),
                                 yaxis=dict(
                                     showgrid=True,
                                     zeroline=False,
-                                    scaleanchor="x",
+                                    scaleanchor='x',
                                     scaleratio=1,
                                     fixedrange=False,
                                 ),
-                                hovermode="closest",
-                                dragmode="zoom",
+                                hovermode='closest',
+                                dragmode='zoom',
                             )
 
                             return fig
-
-
 
                         def create_stereographic_projection_quiver_plot_alt(
                             x_coords,
@@ -1464,16 +1477,15 @@ class OmegaThetaXRD(Measurement, PlotSection, EntryData, ArchiveSection):
                             component_0_values,
                             component_90_values,
                             title,
-                            #scaling_factor=1,
+                            # scaling_factor=1,
                         ):
                             # Use quiver to plot arrows from the positions defined by x_coords and y_coords
                             # u (x-component) is component_0_values, v (y-component) is component_90_values
                             u = [
-                                -comp0  for comp0 in component_0_values
+                                -comp0 for comp0 in component_0_values
                             ]  # Inverted x-component
                             v = [
-                                comp90 
-                                for comp90 in component_90_values
+                                comp90 for comp90 in component_90_values
                             ]  # y-component
 
                             hovertext = [
@@ -1487,10 +1499,12 @@ class OmegaThetaXRD(Measurement, PlotSection, EntryData, ArchiveSection):
                             ]
 
                             # Create quiver plot
-                            if self.wafer_diameter>=25:
-                                scaling=15
-                            elif self.wafer_diameter <=10:
-                                scaling=2
+                            if self.wafer_diameter <= 25:
+                                scaling = 15
+                            elif self.wafer_diameter <= 10:
+                                scaling = 2
+                            else:
+                                scaling = 20  # adjust when tested with larger wafers
                             fig = ff.create_quiver(
                                 x_coords,
                                 y_coords,
@@ -1505,7 +1519,7 @@ class OmegaThetaXRD(Measurement, PlotSection, EntryData, ArchiveSection):
                             # Define the circle's center and radius
                             circle_center_x = 0
                             circle_center_y = 0
-                            circle_radius = self.wafer_diameter/2
+                            circle_radius = self.wafer_diameter / 2
 
                             # Add the circle to the plot
                             fig.add_shape(
@@ -1591,14 +1605,16 @@ class OmegaThetaXRD(Measurement, PlotSection, EntryData, ArchiveSection):
                             'Stereographic Projection',
                             wafer_diameter=self.wafer_diameter,
                         )
-                        fig_quiver_alt = create_stereographic_projection_quiver_plot_alt(
-                            x_coords,
-                            y_coords,
-                            tilt_values,
-                            tilt_direction_values,
-                            component_0_values,
-                            component_90_values,
-                            'Stereographic Projection',
+                        fig_quiver_alt = (
+                            create_stereographic_projection_quiver_plot_alt(
+                                x_coords,
+                                y_coords,
+                                tilt_values,
+                                tilt_direction_values,
+                                component_0_values,
+                                component_90_values,
+                                'Stereographic Projection',
+                            )
                         )
                         # Displaying the plots
                         # fig_tilt.show()
