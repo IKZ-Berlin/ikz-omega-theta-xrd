@@ -13,7 +13,7 @@ classifiers = [
     "Programming Language :: Python :: 3.12",
     "License :: OSI Approved :: MIT License",
 ]
-name = "nomad-ikz_omega_theta_xrd"
+name = "ikz_omega_theta_xrd"
 description = "NOMAD plugin for Omega Theta XRD Measurements"
 version = "0.1.0"
 readme = "README.md"
@@ -25,10 +25,13 @@ maintainers = [
     { name = "Sebastian Brueckner", email = "sebastian.brueckner@physik.hu-berlin.de" },
 ]
 license = { file = "LICENSE" }
-dependencies = ["nomad-lab>=1.3.0"]
+dependencies = [
+    "nomad-lab>=1.3.0",
+    "python-magic-bin; sys_platform == 'win32'",
+]
 
 [project.urls]
-Repository = "https://github.com/budschi/nomad-ikz_omega_theta_xrd"
+Repository = "https://github.com/budschi/ikz_omega_theta_xrd"
 
 [project.optional-dependencies]
 dev = ["ruff", "pytest", "structlog"]
