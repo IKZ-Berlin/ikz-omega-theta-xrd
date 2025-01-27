@@ -1,13 +1,12 @@
 from nomad.config.models.plugins import AppEntryPoint
 from nomad.config.models.ui import App, Column, Columns, FilterMenu, FilterMenus
 
-
-myapp = AppEntryPoint(
-    name='MyApp',
-    description='App defined using the new plugin mechanism.',
+app_entry_point = AppEntryPoint(
+    name='NewApp',
+    description='New app entry point configuration.',
     app=App(
-        label='MyApp',
-        path='myapp',
+        label='NewApp',
+        path='app',
         category='simulation',
         columns=Columns(
             selected=['entry_id'],
