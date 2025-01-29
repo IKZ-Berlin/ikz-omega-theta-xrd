@@ -46,6 +46,7 @@ from nomad_ikz_omega_theta_xrd.schema_packages.utils import create_archive
 if TYPE_CHECKING:
     from nomad.datamodel.datamodel import EntryArchive
     from structlog.stdlib import BoundLogger
+import pandas as pd
 
 m_package = Package(name='Omega Theta XRD')
 
@@ -330,6 +331,64 @@ class ParameterList(MeasurementResult, PlotSection, ArchiveSection):
 
         super().normalize(archive, logger)
 
+    # statistics of map
+    # center: tilt + direction
+    # overall:
+    #     tilt min + max + differenz min max
+    #     avg (ungewichtet)
+    #     Stabwn (Excel) --> root mean square tilt
+class MapStatistics(MeasurementResult, ArchiveSection):
+    m_def = Section(label='Map Statistics', a_eln=dict(overview=True, hide=['name']))
+
+    center_tilt = Quantity(
+        type=float,
+        unit='\u00b0',
+        description='Center tilt of the map.',
+        a_eln={'component':'NumberEditQuantity'},
+    )
+
+    center_direction = Quantity(
+        type=np.float64,
+        #unit='\u00b0',
+        description='Center direction of the map.',
+        a_eln={'component':'NumberEditQuantity'},
+    )
+
+    tilt_min = Quantity(
+        type=float,
+        unit='\u00b0',
+        description='Minimum tilt of the map.',
+        a_eln={'component':'NumberEditQuantity'},
+    )
+
+    tilt_max = Quantity(
+        type=float,
+        unit='\u00b0',
+        description='Maximum tilt of the map.',
+        a_eln={'component':'NumberEditQuantity'},
+    )
+
+    tilt_diff_min_max = Quantity(
+        type=float,
+        unit='\u00b0',
+        description='Difference between minimum and maximum tilt of the map.',
+        a_eln={'component':'NumberEditQuantity'},
+    )
+
+    avg_tilt = Quantity(
+        type=float,
+        unit='\u00b0',
+        description='Average tilt of the map (unweighted).',
+        a_eln={'component':'NumberEditQuantity'},
+    )
+
+    rms_tilt = Quantity(
+        type=float,
+        unit='\u00b0',
+        description='Root mean square tilt of the map (Stabwn in Excel).',
+        a_eln={'component':'NumberEditQuantity'},
+    )
+
 
 class Samples(CompositeSystemReference):
     m_def = Section(label='Sample', a_eln=dict(overview=True))
@@ -396,14 +455,70 @@ class OmegaThetaXRD(Measurement, PlotSection, EntryData, ArchiveSection):
         section_def=ParameterList,
         repeats=True,
     )
+    map_statistics = SubSection(
+        section_def=MapStatistics,
+    )
     instruments = SubSection(
         section_def=OmegaThetaXRDInstrumentReference,
     )
 
-    def generate_table_plot(self):
-        # Extract the values for each column from all self.results
-        x_pos_list = [f'{result.x_pos:.1f}' for result in self.results]
-        y_pos_list = [f'{result.y_pos:.1f}' for result in self.results]
+    # def generate_table_plot(self):
+    #     # Extract the values for each column from all self.results
+    #     x_pos_list = [result.x_pos for result in self.results]
+    #     y_pos_list = [result.y_pos for result in self.results]
+    #     tilt_list = [f'{result.tilt.magnitude:.3f}' for result in self.results]
+    #     tilt_direction_list = [
+    #         f'{result.tilt_direction.magnitude:.1f}' for result in self.results
+    #     ]
+    #     component_0_list = [f'{result.component_0:.3f}' for result in self.results]
+    #     component_90_list = [f'{result.component_90:.3f}' for result in self.results]
+    #     reference_offset_list = [
+    #         f'{result.reference_offset:.3f}' for result in self.results
+    #     ]
+    #     reference_axis_list = [result.reference_axis for result in self.results]
+
+    #     fig_table = go.Figure(
+    #         data=[
+    #             go.Table(
+    #                 columnwidth=[1, 1, 1, 1.5, 2, 2, 1.8, 1.8],
+    #                 header=dict(
+    #                     values=[
+    #                         'X Pos.',
+    #                         'Y Pos.',
+    #                         'Tilt',
+    #                         'Tilt Direction',
+    #                         'Component 0',
+    #                         'Component 90',
+    #                         'Reference Offset',
+    #                         'Reference Axis',
+    #                     ],
+    #                     align='center',
+    #                 ),
+    #                 cells=dict(
+    #                     values=[
+    #                         x_pos_list,
+    #                         y_pos_list,
+    #                         tilt_list,
+    #                         tilt_direction_list,
+    #                         component_0_list,
+    #                         component_90_list,
+    #                         reference_offset_list,
+    #                         reference_axis_list,
+    #                     ],
+    #                     align='center',
+    #                 ),
+    #             )
+    #         ]
+    #     )
+    #     fig_table.update_layout(width=1000, height=200)
+    #     fig_table.update_layout(
+    #         margin=dict(l=1, r=1, t=1, b=1)  # Set left, right, top, bottom margins
+    #     )
+    #     return PlotlyFigure(label='Table', figure=fig_table.to_plotly_json())
+    
+    def extract_table_data(self):
+        x_pos_list = [round(result.x_pos, 1) for result in self.results]
+        y_pos_list = [round(result.y_pos, 1) for result in self.results]
         tilt_list = [f'{result.tilt.magnitude:.3f}' for result in self.results]
         tilt_direction_list = [
             f'{result.tilt_direction.magnitude:.1f}' for result in self.results
@@ -414,6 +529,142 @@ class OmegaThetaXRD(Measurement, PlotSection, EntryData, ArchiveSection):
             f'{result.reference_offset:.3f}' for result in self.results
         ]
         reference_axis_list = [result.reference_axis for result in self.results]
+
+        return (
+            x_pos_list,
+            y_pos_list,
+            tilt_list,
+            tilt_direction_list,
+            component_0_list,
+            component_90_list,
+            reference_offset_list,
+            reference_axis_list,
+        )
+    def generate_map_statistics(self):
+        (
+            x_pos_list,
+            y_pos_list,
+            tilt_list,
+            tilt_direction_list,
+            component_0_list,
+            component_90_list,
+            reference_offset_list,
+            reference_axis_list,
+        ) = self.extract_table_data()
+
+
+        data = {
+            'X Pos': x_pos_list,
+            'Y Pos': y_pos_list,
+            'Tilt': tilt_list,
+            'Tilt Direction': tilt_direction_list,
+            'Component 0': component_0_list,
+            'Component 90': component_90_list,
+            'Reference Offset': reference_offset_list,
+            'Reference Axis': reference_axis_list,
+        }
+
+        df = pd.DataFrame(data).apply(pd.to_numeric, errors='ignore')
+        # Find the tilt and direction value of the x y combinations which is at x=0 and y=0 or as close as possible
+        df['distance'] = np.sqrt(df['X Pos']**2 + df['Y Pos']**2)
+        closest_point = df.loc[df['distance'].idxmin()]
+        center_tilt = closest_point['Tilt']
+        center_direction = float(closest_point['Tilt Direction'])
+        tilt_min = df['Tilt'].min()
+        tilt_max = df['Tilt'].max()
+        tilt_diff_min_max = tilt_max - tilt_min
+        avg_tilt = df['Tilt'].mean()
+        rms_tilt = np.sqrt(np.mean(df['Tilt']**2))
+        return MapStatistics(
+            center_tilt=center_tilt,
+            center_direction=center_direction,
+            tilt_min=tilt_min,
+            tilt_max=tilt_max,
+            tilt_diff_min_max=tilt_diff_min_max,
+            avg_tilt=avg_tilt,
+            rms_tilt=rms_tilt,
+        )        
+    def generate_tilt_x_y_cut_plot(self):
+        # Plot: x-y cut tilt, if possible along min max direction
+        (
+            x_pos_list,
+            y_pos_list,
+            tilt_list,
+            tilt_direction_list,
+            component_0_list,
+            component_90_list,
+            reference_offset_list,
+            reference_axis_list,
+        ) = self.extract_table_data()
+        data = {
+            'X Pos': x_pos_list,
+            'Y Pos': y_pos_list,
+            'Tilt': tilt_list,
+            'Tilt Direction': tilt_direction_list,
+            'Component 0': component_0_list,
+            'Component 90': component_90_list,
+            'Reference Offset': reference_offset_list,
+            'Reference Axis': reference_axis_list,
+        }
+
+        df = pd.DataFrame(data).apply(pd.to_numeric, errors='ignore')
+        df = df.apply(pd.to_numeric, errors='ignore')
+        # Find the rows where x and y are closest to zero
+        
+        closest_x_zero_value = df['X Pos'].iloc[(df['X Pos'] - 0).abs().argsort()[:1]].values[0]
+        closest_y_zero_value = df['Y Pos'].iloc[(df['Y Pos'] - 0).abs().argsort()[:1]].values[0]
+
+        # Create the plot
+        fig = go.Figure()
+
+        # Add trace for closest x == 0
+        fig.add_trace(go.Scatter(
+            x= df.loc[df['X Pos'] == closest_x_zero_value]['Y Pos'],
+            y= df.loc[df['X Pos'] == closest_x_zero_value]['Tilt'],
+            mode='lines+markers',
+            name='Tilt over closest X == 0'
+        ))
+
+        # Add trace for closest y == 0
+        fig.add_trace(go.Scatter(
+            x= df.loc[df['Y Pos'] == closest_y_zero_value]['X Pos'],
+            y= df.loc[df['Y Pos'] == closest_y_zero_value]['Tilt'],
+            mode='lines+markers',
+            name='Tilt over closest Y == 0'
+        ))
+
+        # Update layout
+        fig.update_layout(
+            template='plotly_white',
+            title='Tilt over Closest X == 0 and Y == 0',
+            xaxis_title='Position',
+            yaxis_title='Tilt',
+            legend_title='Legend',
+            legend=dict(
+            x=0.01,
+            y=0.99,
+            bgcolor='rgba(255, 255, 255, 0.5)',
+            bordercolor='black',
+            borderwidth=1
+            )
+        )
+
+        return PlotlyFigure(label='Cut', figure=fig.to_plotly_json())
+
+
+
+
+    def generate_table_plot(self):
+        (
+            x_pos_list,
+            y_pos_list,
+            tilt_list,
+            tilt_direction_list,
+            component_0_list,
+            component_90_list,
+            reference_offset_list,
+            reference_axis_list,
+        ) = self.extract_table_data()
 
         fig_table = go.Figure(
             data=[
@@ -448,12 +699,13 @@ class OmegaThetaXRD(Measurement, PlotSection, EntryData, ArchiveSection):
                 )
             ]
         )
-        fig_table.update_layout(width=1000, height=200)
+        fig_table.update_layout(
+            template='plotly_white',
+            width=1000, height=200)
         fig_table.update_layout(
             margin=dict(l=1, r=1, t=1, b=1)  # Set left, right, top, bottom margins
         )
         return PlotlyFigure(label='Table', figure=fig_table.to_plotly_json())
-
     def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
         """
         The normalizer for the `OmegaThetaXRD` class.
@@ -660,7 +912,7 @@ class OmegaThetaXRD(Measurement, PlotSection, EntryData, ArchiveSection):
 
                         xrdinstrumentref = OmegaThetaXRDInstrumentReference()
                         xrdinstrumentref.lab_id = info_dict.get('device_serial_no')
-                        xrdinstrumentref.normalize(archive, logger)
+                        # xrdinstrumentref.normalize(archive, logger)
                         if xrdinstrumentref.reference is None:
                             xrdinstrument = OmegaThetaXRDInstrument(
                                 lab_id=xrdinstrumentref.lab_id
@@ -1477,6 +1729,7 @@ class OmegaThetaXRD(Measurement, PlotSection, EntryData, ArchiveSection):
                             component_0_values,
                             component_90_values,
                             title,
+                            wafer_diameter,
                             # scaling_factor=1,
                         ):
                             # Use quiver to plot arrows from the positions defined by x_coords and y_coords
@@ -1499,10 +1752,11 @@ class OmegaThetaXRD(Measurement, PlotSection, EntryData, ArchiveSection):
                             ]
 
                             # Create quiver plot
-                            if self.wafer_diameter <= 25:
-                                scaling = 15
-                            elif self.wafer_diameter <= 10:
+                            waferdiameter = wafer_diameter
+                            if waferdiameter <= 10:
                                 scaling = 2
+                            elif waferdiameter <= 25:
+                                scaling = 15
                             else:
                                 scaling = 20  # adjust when tested with larger wafers
                             fig = ff.create_quiver(
@@ -1537,6 +1791,7 @@ class OmegaThetaXRD(Measurement, PlotSection, EntryData, ArchiveSection):
 
                             # Add layout settings
                             fig.update_layout(
+                                #template='plotly_white',
                                 title=title,
                                 xaxis_title='X Position',
                                 yaxis_title='Y Position',
@@ -1614,6 +1869,7 @@ class OmegaThetaXRD(Measurement, PlotSection, EntryData, ArchiveSection):
                                 component_0_values,
                                 component_90_values,
                                 'Stereographic Projection',
+                                wafer_diameter=self.wafer_diameter,
                             )
                         )
                         # Displaying the plots
@@ -1679,11 +1935,14 @@ class OmegaThetaXRD(Measurement, PlotSection, EntryData, ArchiveSection):
                         )
                         self.figures.append(
                             PlotlyFigure(
-                                label='Stereographic Projection',
+                                label='Stereographic Projection alt',
                                 # index=8,
                                 figure=fig_quiver_alt.to_plotly_json(),
                             )
                         )
+                        self.figures.append(self.generate_tilt_x_y_cut_plot())
+                        self.map_statistics = self.generate_map_statistics()
+
 
         if not self.results:
             return
