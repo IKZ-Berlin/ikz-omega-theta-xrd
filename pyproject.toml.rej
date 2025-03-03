@@ -1,0 +1,16 @@
+diff a/pyproject.toml b/pyproject.toml	(rejected hunks)
+@@ -108,10 +111,11 @@ package-dir = { "" = "src" }
+ where = ["src"]
+ 
+ [project.entry-points.'nomad.plugin']
+-myparser = "nomad_ikz_omega_theta_xrd.parsers:myparser"
+-mypackage = "nomad_ikz_omega_theta_xrd.schema_packages:mypackage"
++parser_entry_point = "ikz_omega_theta_xrd.parsers:parser_entry_point"
++schema_package_entry_point = "ikz_omega_theta_xrd.schema_packages:schema_package_entry_point"
+ 
+-myapp = "nomad_ikz_omega_theta_xrd.apps:myapp"
++app_entry_point = "ikz_omega_theta_xrd.apps:app_entry_point"
++example_upload_entry_point = "ikz_omega_theta_xrd.example_uploads:example_upload_entry_point"
+ [tool.cruft]
+ # Avoid updating workflow files, this leads to permissions issues
+ skip = [".github/*"]
