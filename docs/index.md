@@ -1,4 +1,4 @@
-# Welcome to the `nomad-ikz_omega_theta_xrd` documentation
+# Welcome to the `ikz_omega_theta_xrd` documentation
 
 NOMAD plugin for Omega Theta XRD Measurements
 
