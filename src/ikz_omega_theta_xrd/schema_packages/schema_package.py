@@ -16,13 +16,13 @@ from nomad.datamodel.metainfo.annotations import ELNAnnotation, ELNComponentEnum
 from nomad.metainfo import Quantity, SchemaPackage
 
 configuration = config.get_plugin_entry_point(
-    'nomad_ikz_omega_theta_xrd.schema_packages:mypackage'
+    'ikz_omega_theta_xrd.schema_packages:schema_package_entry_point'
 )
 
 m_package = SchemaPackage()
 
 
-class MySchema(Schema):
+class NewSchemaPackage(Schema):
     name = Quantity(
         type=str, a_eln=ELNAnnotation(component=ELNComponentEnum.StringEditQuantity)
     )
@@ -31,7 +31,7 @@ class MySchema(Schema):
     def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
         super().normalize(archive, logger)
 
-        logger.info('MySchema.normalize', parameter=configuration.parameter)
+        logger.info('NewSchema.normalize', parameter=configuration.parameter)
         self.message = f'Hello {self.name}!'
 
 
