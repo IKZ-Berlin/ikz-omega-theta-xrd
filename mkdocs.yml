@@ -1,8 +1,8 @@
-site_name: nomad-ikz_omega_theta_xrd
+site_name: ikz_omega_theta_xrd
 site_description: NOMAD plugin for Omega Theta XRD Measurements
 site_author: Sebastian Brueckner
 
-repo_url: https://github.com/budschi/nomad-ikz_omega_theta_xrd
+repo_url: https://github.com/budschi/ikz_omega_theta_xrd
 edit_uri: ""
 
 nav:
@@ -56,5 +56,4 @@ extra_css:
   - stylesheets/extra.css
 extra_javascript:
   - javascript.js
-  - https://polyfill.io/v3/polyfill.min.js?features=es6
   - https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js
